@@ -520,8 +520,8 @@ void canonprint( int c )
     static int last = 0;
     static bool quoted = FALSE;
     static bool quoted_until_eol = FALSE;
-    static colon_pending = FALSE;
-    static remark_pending = FALSE;
+    static bool colon_pending = FALSE;
+    static bool remark_pending = FALSE;
     unsigned char *p = NULL;
     char buffer[] = "\\XX\\XX";
     struct _escapes *ep;

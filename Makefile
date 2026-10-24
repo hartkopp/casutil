@@ -3,8 +3,8 @@
 #
 CC=gcc
 CCOPTS=-o $@ -D__unix__	-Wno-format
-CCOPTS+=-Wno-logical-op-parentheses -Wno-pointer-sign -Wno-switch \
-        -Wno-int-to-void-pointer-cast -Wno-void-pointer-to-int-cast
+CCOPTS+=-Wno-parentheses -Wno-pointer-sign -Wno-switch \
+        -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast
 	
 os:=$(shell	uname)
 TARGET=unix
@@ -35,7 +35,7 @@ dist_files:=$(foreach f,$(files) $(scripts),$(DIST)/$(notdir $f))
 all:	$(files)
 
 clean:
-	rm $(TARGET)/*.o
+	rm -f $(TARGET)/*.o
 
 install: $(files) $(scripts)
 	cp $(files)	$(scripts) $(DIST)

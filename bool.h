@@ -9,10 +9,16 @@
 #define TRUE (!FALSE)
 #endif
 
-/* bool is a keyword in C++ */
+/* bool is a keyword in C++ and in C23, C99 provides it in <stdbool.h> */
+#if defined(__cplusplus)
+/* nothing to do */
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#include <stdbool.h>
+#else
 /*@-cppnames@*/
 typedef int bool;
 /*@=cppnames@*/
+#endif
 
 /*
 ** bool_initMod has no real effect

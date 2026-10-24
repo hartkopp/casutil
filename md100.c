@@ -31,6 +31,7 @@
  *  Some compiler specifics
  */
 #if defined(__unix__) 
+#include <strings.h>
 #define stricmp  strcasecmp
 #define strnicmp strncasecmp
 #define memicmp  strncasecmp
