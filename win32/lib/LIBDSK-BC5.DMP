@@ -1,0 +1,813 @@
+Turbo Dump  Version 5.0.13.1 Copyright (c) 1988, 1997 Borland International
+                  Display of File LIBDSK-BC5.LIB
+
+000000 MSLIBR Index begins at file offset 1200. Index is 3 blocks.
+
+000010 THEADR  _dg_aprigeom
+000021 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_aprigeom
+      Module Name: libdsk.dll
+      ordinal: 1
+000043 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:0
+00004C MODEND
+
+===============
+
+000060 THEADR  _dg_cpm86geom
+000072 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_cpm86geom
+      Module Name: libdsk.dll
+      ordinal: 2
+000095 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:1
+00009E MODEND
+
+===============
+
+0000B0 THEADR  _dg_dosgeom
+0000C0 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_dosgeom
+      Module Name: libdsk.dll
+      ordinal: 3
+0000E1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:2
+0000EA MODEND
+
+===============
+
+0000F0 THEADR  _dg_ls2ps
+0000FE COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_ls2ps
+      Module Name: libdsk.dll
+      ordinal: 4
+00011D COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:3
+000126 MODEND
+
+===============
+
+000130 THEADR  _dg_lt2pt
+00013E COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_lt2pt
+      Module Name: libdsk.dll
+      ordinal: 5
+00015D COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:4
+000166 MODEND
+
+===============
+
+000170 THEADR  _dg_pcwgeom
+000180 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_pcwgeom
+      Module Name: libdsk.dll
+      ordinal: 6
+0001A1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:5
+0001AA MODEND
+
+===============
+
+0001B0 THEADR  _dg_ps2ls
+0001BE COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_ps2ls
+      Module Name: libdsk.dll
+      ordinal: 7
+0001DD COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:6
+0001E6 MODEND
+
+===============
+
+0001F0 THEADR  _dg_pt2lt
+0001FE COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_pt2lt
+      Module Name: libdsk.dll
+      ordinal: 8
+00021D COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:7
+000226 MODEND
+
+===============
+
+000230 THEADR  _dg_stdformat
+000242 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dg_stdformat
+      Module Name: libdsk.dll
+      ordinal: 9
+000265 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:8
+00026E MODEND
+
+===============
+
+000280 THEADR  _dsk_alform
+000290 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_alform
+      Module Name: libdsk.dll
+      ordinal: 10
+0002B1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:9
+0002BA MODEND
+
+===============
+
+0002C0 THEADR  _dsk_apform
+0002D0 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_apform
+      Module Name: libdsk.dll
+      ordinal: 11
+0002F1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:10
+0002FA MODEND
+
+===============
+
+000300 THEADR  _dsk_close
+00030F COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_close
+      Module Name: libdsk.dll
+      ordinal: 12
+00032F COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:11
+000338 MODEND
+
+===============
+
+000340 THEADR  _dsk_comp_enum
+000353 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_comp_enum
+      Module Name: libdsk.dll
+      ordinal: 13
+000377 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:12
+000380 MODEND
+
+===============
+
+000390 THEADR  _dsk_compdesc
+0003A2 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_compdesc
+      Module Name: libdsk.dll
+      ordinal: 14
+0003C5 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:13
+0003CE MODEND
+
+===============
+
+0003E0 THEADR  _dsk_compname
+0003F2 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_compname
+      Module Name: libdsk.dll
+      ordinal: 15
+000415 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:14
+00041E MODEND
+
+===============
+
+000430 THEADR  _dsk_creat
+00043F COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_creat
+      Module Name: libdsk.dll
+      ordinal: 16
+00045F COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:15
+000468 MODEND
+
+===============
+
+000470 THEADR  _dsk_drive_status
+000486 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_drive_status
+      Module Name: libdsk.dll
+      ordinal: 17
+0004AD COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:16
+0004B6 MODEND
+
+===============
+
+0004C0 THEADR  _dsk_drvdesc
+0004D1 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_drvdesc
+      Module Name: libdsk.dll
+      ordinal: 18
+0004F3 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:17
+0004FC MODEND
+
+===============
+
+000510 THEADR  _dsk_drvname
+000521 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_drvname
+      Module Name: libdsk.dll
+      ordinal: 19
+000543 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:18
+00054C MODEND
+
+===============
+
+000560 THEADR  _dsk_get_comment
+000575 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_get_comment
+      Module Name: libdsk.dll
+      ordinal: 20
+00059B COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:19
+0005A4 MODEND
+
+===============
+
+0005B0 THEADR  _dsk_get_forcehead
+0005C7 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_get_forcehead
+      Module Name: libdsk.dll
+      ordinal: 21
+0005EF COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:20
+0005F8 MODEND
+
+===============
+
+000600 THEADR  _dsk_get_option
+000614 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_get_option
+      Module Name: libdsk.dll
+      ordinal: 22
+000639 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:21
+000642 MODEND
+
+===============
+
+000650 THEADR  _dsk_get_psh
+000661 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_get_psh
+      Module Name: libdsk.dll
+      ordinal: 23
+000683 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:22
+00068C MODEND
+
+===============
+
+0006A0 THEADR  _dsk_get_retry
+0006B3 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_get_retry
+      Module Name: libdsk.dll
+      ordinal: 24
+0006D7 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:23
+0006E0 MODEND
+
+===============
+
+0006F0 THEADR  _dsk_getgeom
+000701 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_getgeom
+      Module Name: libdsk.dll
+      ordinal: 25
+000723 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:24
+00072C MODEND
+
+===============
+
+000740 THEADR  _dsk_lcheck
+000750 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_lcheck
+      Module Name: libdsk.dll
+      ordinal: 26
+000771 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:25
+00077A MODEND
+
+===============
+
+000780 THEADR  _dsk_lformat
+000791 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_lformat
+      Module Name: libdsk.dll
+      ordinal: 27
+0007B3 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:26
+0007BC MODEND
+
+===============
+
+0007D0 THEADR  _dsk_lread
+0007DF COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_lread
+      Module Name: libdsk.dll
+      ordinal: 28
+0007FF COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:27
+000808 MODEND
+
+===============
+
+000810 THEADR  _dsk_lsecid
+000820 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_lsecid
+      Module Name: libdsk.dll
+      ordinal: 29
+000841 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:28
+00084A MODEND
+
+===============
+
+000850 THEADR  _dsk_lseek
+00085F COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_lseek
+      Module Name: libdsk.dll
+      ordinal: 30
+00087F COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:29
+000888 MODEND
+
+===============
+
+000890 THEADR  _dsk_ltrackids
+0008A3 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_ltrackids
+      Module Name: libdsk.dll
+      ordinal: 31
+0008C7 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:30
+0008D0 MODEND
+
+===============
+
+0008E0 THEADR  _dsk_ltread
+0008F0 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_ltread
+      Module Name: libdsk.dll
+      ordinal: 32
+000911 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:31
+00091A MODEND
+
+===============
+
+000920 THEADR  _dsk_lwrite
+000930 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_lwrite
+      Module Name: libdsk.dll
+      ordinal: 33
+000951 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:32
+00095A MODEND
+
+===============
+
+000960 THEADR  _dsk_map_delete
+000974 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_map_delete
+      Module Name: libdsk.dll
+      ordinal: 34
+000999 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:33
+0009A2 MODEND
+
+===============
+
+0009B0 THEADR  _dsk_map_dtoi
+0009C2 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_map_dtoi
+      Module Name: libdsk.dll
+      ordinal: 35
+0009E5 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:34
+0009EE MODEND
+
+===============
+
+000A00 THEADR  _dsk_map_itod
+000A12 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_map_itod
+      Module Name: libdsk.dll
+      ordinal: 36
+000A35 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:35
+000A3E MODEND
+
+===============
+
+000A50 THEADR  _dsk_open
+000A5E COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_open
+      Module Name: libdsk.dll
+      ordinal: 37
+000A7D COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:36
+000A86 MODEND
+
+===============
+
+000A90 THEADR  _dsk_option_enum
+000AA5 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_option_enum
+      Module Name: libdsk.dll
+      ordinal: 38
+000ACB COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:37
+000AD4 MODEND
+
+===============
+
+000AE0 THEADR  _dsk_pcheck
+000AF0 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_pcheck
+      Module Name: libdsk.dll
+      ordinal: 39
+000B11 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:38
+000B1A MODEND
+
+===============
+
+000B20 THEADR  _dsk_pformat
+000B31 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_pformat
+      Module Name: libdsk.dll
+      ordinal: 40
+000B53 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:39
+000B5C MODEND
+
+===============
+
+000B70 THEADR  _dsk_pread
+000B7F COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_pread
+      Module Name: libdsk.dll
+      ordinal: 41
+000B9F COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:40
+000BA8 MODEND
+
+===============
+
+000BB0 THEADR  _dsk_psecid
+000BC0 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_psecid
+      Module Name: libdsk.dll
+      ordinal: 42
+000BE1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:41
+000BEA MODEND
+
+===============
+
+000BF0 THEADR  _dsk_pseek
+000BFF COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_pseek
+      Module Name: libdsk.dll
+      ordinal: 43
+000C1F COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:42
+000C28 MODEND
+
+===============
+
+000C30 THEADR  _dsk_ptrackids
+000C43 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_ptrackids
+      Module Name: libdsk.dll
+      ordinal: 44
+000C67 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:43
+000C70 MODEND
+
+===============
+
+000C80 THEADR  _dsk_ptread
+000C90 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_ptread
+      Module Name: libdsk.dll
+      ordinal: 45
+000CB1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:44
+000CBA MODEND
+
+===============
+
+000CC0 THEADR  _dsk_pwrite
+000CD0 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_pwrite
+      Module Name: libdsk.dll
+      ordinal: 46
+000CF1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:45
+000CFA MODEND
+
+===============
+
+000D00 THEADR  _dsk_report
+000D10 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_report
+      Module Name: libdsk.dll
+      ordinal: 47
+000D31 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:46
+000D3A MODEND
+
+===============
+
+000D40 THEADR  _dsk_report_end
+000D54 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_report_end
+      Module Name: libdsk.dll
+      ordinal: 48
+000D79 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:47
+000D82 MODEND
+
+===============
+
+000D90 THEADR  _dsk_reportfunc_get
+000DA8 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_reportfunc_get
+      Module Name: libdsk.dll
+      ordinal: 49
+000DD1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:48
+000DDA MODEND
+
+===============
+
+000DE0 THEADR  _dsk_reportfunc_set
+000DF8 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_reportfunc_set
+      Module Name: libdsk.dll
+      ordinal: 50
+000E21 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:49
+000E2A MODEND
+
+===============
+
+000E30 THEADR  _dsk_rpc_server
+000E44 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_rpc_server
+      Module Name: libdsk.dll
+      ordinal: 51
+000E69 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:50
+000E72 MODEND
+
+===============
+
+000E80 THEADR  _dsk_rtread
+000E90 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_rtread
+      Module Name: libdsk.dll
+      ordinal: 52
+000EB1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:51
+000EBA MODEND
+
+===============
+
+000EC0 THEADR  _dsk_set_comment
+000ED5 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_set_comment
+      Module Name: libdsk.dll
+      ordinal: 53
+000EFB COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:52
+000F04 MODEND
+
+===============
+
+000F10 THEADR  _dsk_set_forcehead
+000F27 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_set_forcehead
+      Module Name: libdsk.dll
+      ordinal: 54
+000F4F COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:53
+000F58 MODEND
+
+===============
+
+000F60 THEADR  _dsk_set_option
+000F74 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_set_option
+      Module Name: libdsk.dll
+      ordinal: 55
+000F99 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:54
+000FA2 MODEND
+
+===============
+
+000FB0 THEADR  _dsk_set_retry
+000FC3 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_set_retry
+      Module Name: libdsk.dll
+      ordinal: 56
+000FE7 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:55
+000FF0 MODEND
+
+===============
+
+001000 THEADR  _dsk_strerror
+001012 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_strerror
+      Module Name: libdsk.dll
+      ordinal: 57
+001035 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:56
+00103E MODEND
+
+===============
+
+001050 THEADR  _dsk_type_enum
+001063 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_type_enum
+      Module Name: libdsk.dll
+      ordinal: 58
+001087 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:57
+001090 MODEND
+
+===============
+
+0010A0 THEADR  _dsk_xcheck
+0010B0 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_xcheck
+      Module Name: libdsk.dll
+      ordinal: 59
+0010D1 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:58
+0010DA MODEND
+
+===============
+
+0010E0 THEADR  _dsk_xread
+0010EF COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_xread
+      Module Name: libdsk.dll
+      ordinal: 60
+00110F COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:59
+001118 MODEND
+
+===============
+
+001120 THEADR  _dsk_xtread
+001130 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_xtread
+      Module Name: libdsk.dll
+      ordinal: 61
+001151 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:60
+00115A MODEND
+
+===============
+
+001160 THEADR  _dsk_xwrite
+001170 COMENT  Purge: Yes, List: Yes, Class: 160 (0A0h)
+    Dynamic link import (IMPDEF)
+      Imported by: ordinal
+      Internal Name: _dsk_xwrite
+      Module Name: libdsk.dll
+      ordinal: 62
+001191 COMENT  Purge: Yes, List: Yes, Class: 251 (0FBh)
+    Hint:61
+00119A MODEND
+
+===============
+
+0011A0 MSLEND
+
