@@ -1,0 +1,168 @@
+Casio MD-100 floppy disks under Linux
+=====================================
+
+This file describes how to read and write Casio MD-100 floppy disks on a
+Linux PC and why the md100 program handles the disk images correctly.
+
+The MD-100 is the floppy disk unit of the Casio PB-1000 (and PB-2000C).
+md100 itself never touches the floppy drive. It works on a disk image, a
+plain file that holds all sectors of the disk. The shell scripts in this
+directory copy a real MD-100 disk to such an image and back.
+
+
+Hardware requirements
+---------------------
+
+- A floppy disk controller (FDC) on the mainboard or on an add-on card,
+  driven by the Linux floppy driver (module "floppy", block major 2).
+
+- A 3.5" floppy drive connected to that controller.
+
+- USB floppy drives do NOT work. They are driven by usb-storage and only
+  know the standard PC formats with 512 byte sectors. The MD-100 uses
+  256 byte sectors, which can only be read and written with a real FDC.
+
+- Double density (DD) disks. High density disks may work if the density
+  hole is covered. Format the disks in the MD-100 itself.
+
+
+Disk format
+-----------
+
+The disk is single sided with 80 tracks, 16 sectors of 256 bytes per
+track and sector numbers starting at 1. This gives 1280 sectors or
+327680 bytes. The image file stores the sectors in this order: track 0
+sector 1 to 16, track 1 sector 1 to 16, and so on.
+
+The MD-100 file system groups 4 sectors into a cluster of 1024 bytes:
+
+  cluster 0      File Allocation Table (FAT)
+  cluster 1..3   directory with 192 entries of 16 bytes
+  cluster 4..    file data
+
+A file name consists of 8 characters for the name and 3 characters for
+the extension, both padded with blanks. There is no dot on the disk, the
+11 characters are stored as one field:
+
+  file name       stored on disk
+                   12345678123
+  AUTOEXEC.BAT    "AUTOEXECBAT"
+  TEST.C          "TEST    C  "
+
+md100 inserts the dot for display and removes it when it parses a name.
+
+The full description of the disk organisation and of the command
+protocol between the PB-1000 and the MD-100 is md100man.txt by Piotr
+Piatek, see "References" below.
+
+
+Setting up the drive
+--------------------
+
+The floppy driver needs to know the MD-100 geometry. This is done with
+the program setfdprm from the fdutils package (fdutils-5.5 or later).
+All steps need root privileges.
+
+1. Load the floppy driver, if it is not built into the kernel:
+
+     modprobe floppy
+
+2. Create the device and set the geometry with makedev.sh. It does:
+
+     mknod /dev/fd0casio b 2 80
+     setfdprm /dev/fd0casio SS DD sect=16 ssize=256
+
+   udev only creates /dev/fd0, so the device has to be created by hand.
+   The minor number 80 selects the first drive (80 & 3 = 0) with the
+   predefined format type 20 (80 >> 2 = 20, "h880" in the kernel). The
+   setfdprm call replaces this format type with the MD-100 geometry. This
+   affects format type 20 on all drives until the floppy driver is
+   reloaded or the system is rebooted.
+
+   Current kernels check the parameters set by setfdprm (since 2019,
+   see set_geometry() in drivers/block/floppy.c). The MD-100 geometry
+   passes these checks.
+
+3. Check the setting with "getfdprm /dev/fd0casio".
+
+
+Reading and writing disks
+-------------------------
+
+  getmd100.sh   reads the disk in drive 0 into the image file "md100.img"
+  putmd100.sh   writes the image file "md100.img" back to the disk
+
+Both scripts use dd with 256 byte blocks and 1280 sectors. After reading
+a disk, the image must be exactly 327680 bytes long. "md100 md100.img dir"
+should then list the files of the disk.
+
+Typical session:
+
+  sh getmd100.sh                       # disk -> image
+  md100 md100.img dir                  # list files
+  md100 md100.img get PROG.BAS         # copy a file to the PC
+  md100 md100.img put new.bas NEW.BAS  # copy a file to the image
+  sh putmd100.sh                       # image -> disk
+
+A new, empty image is created with the option -c in front of the image
+name, for example "md100 -c new.img dir". The size in clusters can be
+appended, e.g. -c320 (default) up to -c512 for the 512 KB images used by
+emulators.
+
+As an alternative to the shell scripts, md100 can be built with LibDsk
+(compile md100.c with -DLIBDSK and link with -ldsk). md100 then accesses
+the drive directly. This has not been tested with current versions.
+
+
+Why md100 matches the real hardware
+-----------------------------------
+
+The disk layout in md100.c was checked against the ROM disassembly of
+the HD6305Y1 microprocessor that controls the MD-100 and against
+md100man.txt:
+
+- Directory entry: md100 uses the same 16 byte layout as the firmware.
+  Byte 0 is the file type (0 marks a free entry), bytes 1..11 the file
+  name, byte 12 is not evaluated by the firmware, bytes 13..14 hold the
+  starting cluster (MSB first) and bit 0 of byte 15 protects the file.
+  md100.c checks the sizes at compile time.
+
+- File name: the firmware compares and renames file names as one field
+  of 11 characters. md100 models this with the FILE_NAME union, which
+  gives access to all 11 characters as well as to name and extension
+  separately, without accessing memory outside of an array.
+
+- FAT: 2 bytes per cluster, MSB first. Bit 15 marks a used entry, bit 14
+  the end of the chain, bits 13..12 the number of the last used sector in
+  the last cluster. The firmware stores 9 bits of the cluster number,
+  exactly the mask FB_BLOCK (0x01FF) in md100.c.
+
+- End of file: like the firmware's sequential write command, md100
+  terminates a file with Ctrl-Z (0x1A) and fills the rest of the sector
+  with zeros. When the data fills the last cluster completely, another
+  cluster is allocated for the terminating sector, as the firmware does.
+
+- The image layout (linear order of tracks and sectors) is the same as
+  in Piotr Piatek's DOS program md100img, which reads MD-100 disks with
+  the PC BIOS.
+
+The images written by md100 are byte-identical when it is built without
+optimisation, with -O2 or -O3 and with gcc or clang.
+
+
+References
+----------
+
+- Piotr Piatek, Miscellaneous programs, section MD-100:
+  md100man.txt (organisation of an MD-100 disk, command protocol) and
+  md100img (DOS program to read and write MD-100 disk images)
+  https://www.pisi.com.pl/piotr433/programs.htm#md100
+
+- Piotr Piatek, Vintage programmable calculators, section Casio MD-100:
+  technical information, circuit diagrams and the ROM dump and
+  disassembly of the HD6305Y1 microprocessor
+  https://www.pisi.com.pl/piotr433/
+
+- Linux floppy driver: drivers/block/floppy.c in the kernel sources
+
+- Marcus von Cube, CASsette IO Utilities: doc/casioutil.html

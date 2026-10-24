@@ -4,5 +4,5 @@
 #
 # To setup the drive: setfdprm /dev/fd0casio SS DD sect=16 ssize=256
 #
-rm md100
-dd ibs=256 obs=1024 count=1280 if=/dev/fd0casio of=md100
+rm -f md100.img
+dd ibs=256 obs=1024 count=1280 if=/dev/fd0casio of=md100.img
