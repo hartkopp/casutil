@@ -545,8 +545,10 @@ int main( int argc, char **argv )
 int usage( void )
 {
     fprintf( stderr,
-             "usage: %s <image> <cmd> <options> <parameters>\n"
+             "usage: %s [-c[S]] [-n] <image> <cmd> <options> <parameters>\n"
              "       <image> holds the floppy data\n"
+             "         -cS  create a new image if the file does not exist\n"
+             "              S is the size (default 320, maximum 512)\n"
              "       <cmd> <parameters> is one of:\n"
              "         dir  <options> \"<md100-pattern>\"\n"
              "         type <options> <md100-file>\n"
@@ -569,8 +571,6 @@ int usage( void )
              "         -a   force ASCII transfer\n"
              "         -eX  use escape syntax, X=N(one), H(ex) or S(ymbols)\n"
              "         -n   no updates are written to the image\n"
-             "         -cS  create a new image if the file does not exist\n"
-             "              S is the size (default 320, maximum 512)\n"
              "       Patterns are DOS style, use \"*.*\" for all files\n"
              "       Wildcard expansion on local files depends on platform\n",
              MyName );
@@ -681,21 +681,25 @@ int parseOptions( int *argcp, char ***argvp, OPTIONS *options, char *opts )
             /*
              *  Create a fresh image (with optional size value)
              */
-            int size;
+            int size = DEFAULT_BLOCKS;
             if ( arg[ 2 ] != '\0' ) {
                 arg = arg + 2;
             }
-            else if ( *argcp >= 2 ) {
+            else if ( *argcp >= 2 && isdigit( (unsigned char) (*argvp)[ 1 ][ 0 ] ) ) {
+                /*
+                 *  Size given as separate argument
+                 */
                 ++(*argvp);
                 --(*argcp);
                 arg = **argvp;
             }
             else {
                 arg = NULL;
-                size = DEFAULT_BLOCKS;
             }
-            if ( arg != NULL && 1 == sscanf( arg, "%d", &size ) ) {
-                if ( size < MIN_BLOCKS || size > MAX_BLOCKS ) { 
+            if ( arg != NULL ) {
+                if ( 1 != sscanf( arg, "%d", &size )
+                  || size < MIN_BLOCKS || size > MAX_BLOCKS ) 
+                {
                     fprintf( stderr, "Invalid disk size for -c option\n" );
                     return NOT_OK;
                 }
