@@ -49,9 +49,6 @@ int checkError( char *message, dsk_err_t err )
 /*
  *  Get access to the device
  */
-#ifdef __BORLANDC__
-#pragma argsused
-#endif
 int openDirect( char *name, int create, int noUpdate )
 {
     dsk_err_t err = dsk_open( &DskHandle, name, NULL, NULL );

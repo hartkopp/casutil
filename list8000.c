@@ -2581,12 +2581,7 @@ int main( int argc, char *argv[] )
         /*
          *  Second argument is output file
          */
-#ifdef _WIN32_WCE
-        fprintf( stderr, "\nPlease use redirection for output file\n" );
-                return 2;
-#else
         freopen( argv[ 1 ], "wt", stdout );
-#endif
     }
 
     if ( wavemode ) {

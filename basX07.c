@@ -16,15 +16,7 @@
 #include <errno.h>
 #include "bool.h"
 #include "wave.h"
-#ifdef __unix__
 #include <unistd.h>
-#else
-#ifdef _WIN32_WCE
-#define sleep(s) Sleep((s)*1000)
-#else
-#include <dos.h>
-#endif
-#endif
 
 #define LEAD_IN_TIME 6        /* tens of a second */
 #define LEAD_IN_TIME_FIRST 20 /* tens of a second */

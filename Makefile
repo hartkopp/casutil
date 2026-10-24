@@ -2,25 +2,14 @@
 # Make Casio utilities
 #
 CC=gcc
-CCOPTS=-o $@ -D__unix__	-Wno-format
+CCOPTS=-o $@ -Wno-format
 CCOPTS+=-Wno-parentheses -Wno-pointer-sign -Wno-switch \
         -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast
-	
-os:=$(shell	uname)
-TARGET=unix
+
+TARGET=linux
 OWNER=root:root
 DIST=/usr/local/bin
-ifeq ($(os),Linux)
-  TARGET=linux
-  scripts=$(TARGET)/*.sh
-else
-  ifeq ($(os),Darwin)
-	TARGET=osx
-	OWNER=root:wheel
-	#CCOPTS+=-arch i386 -arch ppc -flat_namespace
-	#CCOPTS+=-arch i386 -flat_namespace
-  endif
-endif
+scripts=$(TARGET)/*.sh
 files:=	$(TARGET)/wav2raw $(TARGET)/wav2wav	\
 	$(TARGET)/wave730 \
 	$(TARGET)/wave850 $(TARGET)/waveX07	\
@@ -43,16 +32,9 @@ install: $(files) $(scripts)
 	chown $(OWNER) $(dist_files)
 
 zip:
-	touch casutil.zip
-	rm casutil.zip
-	zip	casutil.zip	-r *.c *.h COPYING INSTALL Makefile	*.bat *.cmd	\
-		doc	linux osx dos os2 win32	pb-dump	wince \
-		-x */.*	mk*.c x*.c */wave.o	win32/debug/ win32/debug/* \
-		doc/tmp/ doc/tmp/* \
-		wince/*.vcl wince/*.vco wince/ARMDeb wince/ARMDeb/* \
-		wince/ARMRel/*.obj wince/ARMRel/*.pch \
-		wince/libce/ARMDeb wince/libce/ARMDeb/* \
-		wince/libce/ARMRel/*.obj wince/libce/ARMRel/*.pch
+	rm -f casutil.zip
+	zip casutil.zip -r *.c *.h COPYING INSTALL Makefile doc pb-dump \
+		$(scripts) -x */.* mk*.c x*.c doc/tmp/ doc/tmp/*
 
 $(TARGET)/wave.o:	wave.c wave.h
 	$(CC) $(CCOPTS)	-c $<

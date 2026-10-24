@@ -974,13 +974,9 @@ struct _header {
 #define TYPE_ALL850  0x90
 #define TYPE_TEXT    0
 
-#ifdef __MSDOS__
-#define DATA_SIZE 45000
-#else
 #define DATA_SIZE 65536
-#endif
 /*
- *  Data segment, large enough for a 64KB program (45KB in DOS)
+ *  Data segment, large enough for a 64KB program
  */
 static struct _data {
     char segment_id;

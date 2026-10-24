@@ -22,24 +22,14 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
-#if defined(_WIN32_WCE)
-#include <windef.h>
-#define FILENAME_MAX MAX_PATH
-#endif
+#include <strings.h>
 
 /*
  *  Some compiler specifics
  */
-#if defined(__unix__) 
-#include <strings.h>
 #define stricmp  strcasecmp
 #define strnicmp strncasecmp
 #define memicmp  strncasecmp
-#elif defined(_WIN32_WCE)
-#define stricmp  _stricmp
-#define strnicmp _strinicmp
-#define memicmp  _memicmp
-#endif
 
 /*
  *  Constants
@@ -2951,25 +2941,6 @@ int updateDisk( void )
  */
 #include "libdisk.c"
 
-#elif defined(__OS2__)
-/*
- *  Access through DosDevIoControl
- */
-#include "os2disk.c"
-
-#elif defined(__WIN32__)
-/*
- *  Yet to be implemented
- */
-// #include "windisk.c"
-#define NO_FLOPPY
-
-#elif defined(__MSDOS__)
-/*
- *  Direct access to floppy in DOS
- */
-#include "dosdisk.c"
-
 #else
 /*
  *  No special floppy routines available
@@ -2984,7 +2955,6 @@ int updateDisk( void )
 int noDirectAccess( void )
 {
     errno = EBADF;
-#ifdef __linux__
     /*
      *  Just a reminder for Linux users who do not need special routines
      */
@@ -2993,9 +2963,6 @@ int noDirectAccess( void )
                      "    mknod /dev/fd0casio b 2 80\n"
                      "    /usr/local/bin/setfdprm /dev/fd0casio"
                         " SS DD sect=16 ssize=256\n" );
-#else
-    fprintf( stderr, "Direct disk access not implemented\n" );
-#endif
     return NOT_OK;
 }
 
