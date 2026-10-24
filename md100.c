@@ -73,16 +73,33 @@
 #define TYPE_C 0xD4           /* C source file (ASCII) */
 
 /*
+ *  File name in a directory entry
+ *
+ *  Name and extension are stored without a dot. The MD-100 firmware
+ *  handles them as a single 11 character field, so they can be accessed
+ *  as a whole or separately.
+ */
+typedef union _file_name {
+    char full[ 8 + 3 ];       /* name and extension */
+    struct {
+        char name[ 8 ];       /* blank padded, lower case is preserved */
+        char ext[ 3 ];        /* same here */
+    };
+} FILE_NAME;
+
+/*
  *  Structure of directory entry
  */
 typedef struct _dir_entry {
-    unsigned char type;       /* one of TYPE_? */
-    char          name[ 8 ];  /* blank padded, lower case is preserved */
-    char          ext[ 3 ];   /* same here */
+    unsigned char type;       /* one of TYPE_?, 0 for a free entry */
+    FILE_NAME     filename;   /* name and extension */
     unsigned char unused;     /* unused, non zero value */
     unsigned char block[ 2 ]; /* block number, points to FAT, MSB first */
     unsigned char protect;    /* bit 0 set: protected */
 } DIR_ENTRY;
+
+_Static_assert( sizeof( FILE_NAME ) == 8 + 3, "FILE_NAME must be 11 bytes" );
+_Static_assert( sizeof( DIR_ENTRY ) == 16, "DIR_ENTRY must be 16 bytes" );
 
 /*
  *  Some errors
@@ -1576,6 +1593,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
     char *p;
     FILE_INFO *info;
     DIR_ENTRY newEntry;
+    char pattern[ 8 + 3 + 1 ];
     char ext[ 3 ];
     unsigned char tmp[ 3 ];
     ESCAPE *ep;
@@ -1594,8 +1612,9 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
      *  Combine source and destination name
      */
     memset( &newEntry, '\0', sizeof( DIR_ENTRY ) );
-    expandPattern( dest, newEntry.name, setCase );
-    memcpy( ext, newEntry.ext, 3 );
+    expandPattern( dest, pattern, setCase );
+    memcpy( newEntry.filename.full, pattern, 8 + 3 );
+    memcpy( ext, newEntry.filename.ext, 3 );
 
     for ( p = source + i, i = 0; i < 8 + 3 && *p != '\0'; ++i, ++p ) {
 
@@ -1607,15 +1626,15 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
             /*
              *  Start of extension, restore pattern for last three bytes
              */
-            memcpy( newEntry.name + 8, ext, 3 );
+            memcpy( newEntry.filename.ext, ext, 3 );
             i = 7;
             continue;
         }
-        if ( newEntry.name[ i ] == '?' ) {
+        if ( newEntry.filename.full[ i ] == '?' ) {
             /*
              *  Replace wildcard with character from source filename
              */
-            newEntry.name[ i ] = c;
+            newEntry.filename.full[ i ] = c;
         }
     }
 
@@ -1623,8 +1642,8 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
      *  Get rid of remaining wildcards
      */
     for ( i = 0; i < 8 + 3; ++i ) {
-        if ( newEntry.name[ i ] == '?' ) {
-            newEntry.name[ i ] = ' ';
+        if ( newEntry.filename.full[ i ] == '?' ) {
+            newEntry.filename.full[ i ] = ' ';
         }
     }
 
@@ -1633,28 +1652,28 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
      */
     if ( type <= 0 ) {
 
-        if ( 0 == memicmp( newEntry.ext, "c  ", 3 )
-          || 0 == memicmp( newEntry.ext, "h  ", 3 )
-          || 0 == memicmp( newEntry.ext, "BAT", 3 ) )
+        if ( 0 == memicmp( newEntry.filename.ext, "c  ", 3 )
+          || 0 == memicmp( newEntry.filename.ext, "h  ", 3 )
+          || 0 == memicmp( newEntry.filename.ext, "BAT", 3 ) )
         {
             /*
              *  C-File
              */
             type = TYPE_C;
         }
-        else if ( 0 == memicmp( newEntry.ext, "EXE", 3 ) ) {
+        else if ( 0 == memicmp( newEntry.filename.ext, "EXE", 3 ) ) {
             /*
              *  Binary executable
              */
             type = TYPE_M;
         }
-        else if ( 0 == memicmp( newEntry.ext, "BAS", 3 ) ) {
+        else if ( 0 == memicmp( newEntry.filename.ext, "BAS", 3 ) ) {
             /*
              *  Tokenized BASIC
              */
             type = TYPE_B;
         }
-        else if ( 0 == memicmp( newEntry.ext, "REL", 3 ) ) {
+        else if ( 0 == memicmp( newEntry.filename.ext, "REL", 3 ) ) {
             /*
              *  Relative file
              */
@@ -1743,7 +1762,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
          *  Check for entries with same name
          */
         if ( Directory[ i ].type != 0
-          && 0 == memcmp( Directory[ i ].name, newEntry.name, 8 + 3 ) )
+          && 0 == memcmp( Directory[ i ].filename.full, newEntry.filename.full, 8 + 3 ) )
         {
             /*
              *  File exists
@@ -2022,7 +2041,7 @@ FILE_INFO *renFile( FILE_INFO *info, char *newName, CASE setCase )
          */
         c = newPattern[ i ];
         if ( c == '?' ) {
-            c = info->entry->name[ i ];
+            c = info->entry->filename.full[ i ];
         }
         newPattern[ i ] = setCase == UPPER ? toupper( c )
                         : setCase == LOWER ? tolower( c )
@@ -2039,7 +2058,7 @@ FILE_INFO *renFile( FILE_INFO *info, char *newName, CASE setCase )
          */
         found = Directory + i != info->entry
              && Directory[ i ].type != 0
-             && 0 == memcmp( Directory[ i ].name, newPattern, 8 + 3 );
+             && 0 == memcmp( Directory[ i ].filename.full, newPattern, 8 + 3 );
         if ( found ) {
             break;
         }
@@ -2056,7 +2075,7 @@ FILE_INFO *renFile( FILE_INFO *info, char *newName, CASE setCase )
         /*
          *  Update the name
          */
-        memcpy( info->entry->name, newPattern, 8 + 3 );
+        memcpy( info->entry->filename.full, newPattern, 8 + 3 );
         fileInfo( info->entry, &newInfo, AS_IS );
         MustUpdate = TRUE;
     }
@@ -2492,7 +2511,7 @@ FILE_INFO *fileInfo( DIR_ENTRY *dptr, FILE_INFO *info, CASE setCase )
         /*
          *  Find length of basename
          */
-        if ( dptr->name[ l - 1 ] != ' ' ) {
+        if ( dptr->filename.name[ l - 1 ] != ' ' ) {
             break;
         }
     }
@@ -2501,7 +2520,7 @@ FILE_INFO *fileInfo( DIR_ENTRY *dptr, FILE_INFO *info, CASE setCase )
         /*
          *  Copy basename
          */
-        c = dptr->name[ i ];
+        c = dptr->filename.name[ i ];
         info->name[ j++ ] = setCase == LOWER ? tolower( c )
                           : setCase == UPPER ? toupper( c )
                           : c;
@@ -2511,7 +2530,7 @@ FILE_INFO *fileInfo( DIR_ENTRY *dptr, FILE_INFO *info, CASE setCase )
         /*
          *  Find length of extension
          */
-        if ( dptr->ext[ l - 1 ] != ' ' ) {
+        if ( dptr->filename.ext[ l - 1 ] != ' ' ) {
             break;
         }
     }
@@ -2523,7 +2542,7 @@ FILE_INFO *fileInfo( DIR_ENTRY *dptr, FILE_INFO *info, CASE setCase )
         info->name[ j++ ] = '.';
 
         for ( i = 0; i < l; ++i ) {
-            char c = dptr->ext[ i ];
+            char c = dptr->filename.ext[ i ];
             info->name[ j++ ] = setCase == LOWER ? tolower( c )
                               : setCase == UPPER ? toupper( c )
                               : c;
@@ -2690,7 +2709,7 @@ DIR_ENTRY *findFile( char *pattern, int ignoreCase, int type, int protect )
             if ( expPattern[ i ] == '?' ) {
                 continue;
             }
-            c = dptr->name[ i ];
+            c = dptr->filename.full[ i ];
             if ( expPattern[ i ] != ( ignoreCase ? toupper( c ) : c ) ) {
 #if DEBUG_
                 printf( "%c != %c\n", expPattern[ i ], c );
