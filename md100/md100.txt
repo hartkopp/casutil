@@ -10,9 +10,9 @@ disk. The shell scripts in this directory copy a real MD-100 disk to such
 an image and back. Alternatively md100 can work directly on the floppy
 device /dev/fd0casio, which is much slower.
 
-This directory contains the source of md100 (md100.c and the LibDsk access
-module libdisk.c), the shell scripts and this documentation. "make" in the
-top level directory builds md100 here.
+This directory contains the source of md100 (md100.c), the shell scripts
+and this documentation. "make" in the top level directory builds md100
+here.
 
 
 Hardware requirements
@@ -114,9 +114,11 @@ name, for example "md100 -c new.img dir". The size in clusters can be
 appended, e.g. -c320 (default) up to -c512 for the 512 KB images used by
 emulators.
 
-As an alternative to the shell scripts, md100 can be built with LibDsk
-(compile md100.c with -DLIBDSK and link with -ldsk). md100 then accesses
-the drive directly. This has not been tested with current versions.
+Instead of an image file, md100 can work directly on the floppy device
+once it is set up with makedev.sh, for example "md100 /dev/fd0casio dir".
+md100 accesses the device with the standard file functions just like an
+image, the disk geometry is handled by the floppy driver. This is much
+slower than working on an image.
 
 
 Why md100 matches the real hardware

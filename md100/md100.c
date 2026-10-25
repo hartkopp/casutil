@@ -544,7 +544,8 @@ int usage( void )
 {
     fprintf( stderr,
              "usage: %s [-c[S]] [-n] <image> <cmd> <options> <parameters>\n"
-             "       <image> holds the floppy data\n"
+             "       <image> holds the floppy data, it may also be a floppy\n"
+             "               device like /dev/fd0casio (see md100.txt)\n"
              "         -cS  create a new image if the file does not exist\n"
              "              S is the size (default 320, maximum 512)\n"
              "       <cmd> <parameters> is one of:\n"
@@ -2947,58 +2948,15 @@ int updateDisk( void )
  *
  *  Access to the disk image or physical disk.
  *
- *  On Linux, the standard I/O routines work fine directly on the device!
+ *  The standard I/O routines work fine directly on the Linux floppy
+ *  device, e.g. /dev/fd0casio set up with setfdprm (see md100.txt).
  *
  **************************************************************************/
-
-/*
- *  External routines, depending on implementation
- *
- *  The source is simply included so that everything is compiled in one go
- */
-#if defined( LIBDSK ) || defined( LIBDISK )
-/*
- *  Use LibDsk by John Elliot
- */
-#include "libdisk.c"
-
-#else
-/*
- *  No special floppy routines available
- */
-#define NO_FLOPPY
-#endif
-
-#ifdef NO_FLOPPY
-/*
- *  No special floppy routines implemented
- */
-int noDirectAccess( void )
-{
-    errno = EBADF;
-    /*
-     *  Just a reminder for Linux users who do not need special routines
-     */
-    fprintf( stderr, "Use /dev/fd0casio as image name\n"
-                     "You'll need fdutils-5.5 to set it up:\n"
-                     "    mknod /dev/fd0casio b 2 80\n"
-                     "    /usr/local/bin/setfdprm /dev/fd0casio"
-                        " SS DD sect=16 ssize=256\n" );
-    return NOT_OK;
-}
-
-#define openDirect( name, create, noUpdate ) noDirectAccess()
-#define closeDirect()                        noDirectAccess()
-#define readDirect( dest, number, count )    noDirectAccess()
-#define writeDirect( source, number, count ) noDirectAccess()
-#endif
-
 
 /*
  *  Global file handle
  */
 FILE *Handle;
-bool Direct = false;
 
 
 /*
@@ -3006,68 +2964,54 @@ bool Direct = false;
  */
 int openDisk( char *name, bool create, int size, bool noUpdate )
 {
-    if ( strlen( name ) == 2 && name[ 1 ] == ':' ) {
-        /*
-         *  Drive name given
-         */
-        Direct = true;
-        Blocks = DEFAULT_BLOCKS;
-        return openDirect( name, create, noUpdate );
-    }
-    else {
-        /*
-         *  Standard file access
-         */
-        char *mode;
-        unsigned long image_size;
-        
-        Direct = false;
-        Blocks = size;
-        mode = noUpdate ? "rb" : "r+b";
+    char *mode;
+    unsigned long image_size;
 
-        Handle = fopen( name, mode );
+    Blocks = size;
+    mode = noUpdate ? "rb" : "r+b";
 
-        if ( Handle == NULL && create ) {
+    Handle = fopen( name, mode );
+
+    if ( Handle == NULL && create ) {
+        /*
+         *  Image not found, create a new file
+         */
+        Handle = fopen( name, "w+b" );
+
+        if ( Handle != NULL ) {
             /*
-             *  Image not found, create a new file
+             *  File created, write FAT and empty directory
              */
-            Handle = fopen( name, "w+b" );
-
-            if ( Handle != NULL ) {
-                /*
-                 *  File created, write FAT and empty directory
-                 */
-                if ( OK != updateDisk() ) {
-                    return NOT_OK;
-                }
-                /*
-                 *  Write a dummy block to the end of the image
-                 */
-                if ( OK != writeBlocks( Block, Blocks - 1, 1 ) ) {
-                    return NOT_OK;
-                }
+            if ( OK != updateDisk() ) {
+                return NOT_OK;
+            }
+            /*
+             *  Write a dummy block to the end of the image
+             */
+            if ( OK != writeBlocks( Block, Blocks - 1, 1 ) ) {
+                return NOT_OK;
             }
         }
-        if ( Handle == NULL ) {
-            perror( name );
-            return NOT_OK;
-        }
-        /*
-         *  Check actual image size
-         */
-        if ( OK != fseek( Handle, 0, SEEK_END ) ) {
-            perror( "fseek" );
-            return NOT_OK;
-        }
-        image_size = ftell( Handle );
-        size = (int) ( image_size / SIZE_BLOCK );
-        if ( size > MAX_BLOCKS || size < MIN_BLOCKS - 1 ) {
-            fprintf( stderr, "Image size out of range\n" );
-            return NOT_OK;
-        }
-        if ( size > Blocks ) {
-            Blocks = size;
-        }
+    }
+    if ( Handle == NULL ) {
+        perror( name );
+        return NOT_OK;
+    }
+    /*
+     *  Check actual image size
+     */
+    if ( OK != fseek( Handle, 0, SEEK_END ) ) {
+        perror( "fseek" );
+        return NOT_OK;
+    }
+    image_size = ftell( Handle );
+    size = (int) ( image_size / SIZE_BLOCK );
+    if ( size > MAX_BLOCKS || size < MIN_BLOCKS - 1 ) {
+        fprintf( stderr, "Image size out of range\n" );
+        return NOT_OK;
+    }
+    if ( size > Blocks ) {
+        Blocks = size;
     }
     return OK;
 }
@@ -3078,24 +3022,13 @@ int openDisk( char *name, bool create, int size, bool noUpdate )
  */
 int closeDisk( void )
 {
-    if ( Direct ) {
-        /*
-         *  Terminate access to device
-         */
-        return closeDirect();
-    }
-    else {
-        /*
-         *  Close image file or Linux device
-         */
-        if ( Handle != NULL ) {
-            FILE *f = Handle;
-            Handle = NULL;
+    if ( Handle != NULL ) {
+        FILE *f = Handle;
+        Handle = NULL;
 
-            if ( 0 != fclose( f ) ) {
-                perror( "fclose" );
-                return NOT_OK;
-            }
+        if ( 0 != fclose( f ) ) {
+            perror( "fclose" );
+            return NOT_OK;
         }
     }
     return OK;
@@ -3117,28 +3050,20 @@ int readBlocks( void *dest, int number, int count )
         printf( "read block %d\n", number );
     }
 #endif
-    if ( Direct ) {
-        /*
-         *  Direct disk read
-         */
-        return readDirect( dest, number, count );
+    /*
+     *  Position to block
+     */
+    if ( OK != fseek( Handle, SIZE_BLOCK * (long) number, SEEK_SET ) ) {
+        perror( "fseek" );
+        return NOT_OK;
     }
-    else {
-        /*
-         *  Position to block
-         */
-        if ( OK != fseek( Handle, SIZE_BLOCK * (long) number, SEEK_SET ) ) {
-            perror( "fseek" );
-            return NOT_OK;
-        }
 
-        /*
-         *  Read block(s)
-         */
-        if ( count != (int) fread( dest, SIZE_BLOCK, count, Handle ) ) {
-            perror( "fread" );
-            return NOT_OK;
-        }
+    /*
+     *  Read block(s)
+     */
+    if ( count != (int) fread( dest, SIZE_BLOCK, count, Handle ) ) {
+        perror( "fread" );
+        return NOT_OK;
     }
     return OK;
 }
@@ -3154,28 +3079,20 @@ int writeBlocks( void *source, int number, int count )
 #if DEBUG
     printf( "write blocks %d-%d\n", number, number + count - 1 );
 #endif
-    if ( Direct ) {
-        /*
-         *  Direct disk write
-         */
-        return writeDirect( source, number, count );
+    /*
+     *  Position to block
+     */
+    if ( OK != fseek( Handle, SIZE_BLOCK * (long) number, SEEK_SET ) ) {
+        perror( "fseek" );
+        return NOT_OK;
     }
-    else {
-        /*
-         *  Position to block
-         */
-        if ( OK != fseek( Handle, SIZE_BLOCK * (long) number, SEEK_SET ) ) {
-            perror( "fseek" );
-            return NOT_OK;
-        }
 
-        /*
-         *  Write block(s)
-         */
-        if ( count != (int) fwrite( source, SIZE_BLOCK, count, Handle ) ) {
-            perror( "fwrite" );
-            return NOT_OK;
-        }
+    /*
+     *  Write block(s)
+     */
+    if ( count != (int) fwrite( source, SIZE_BLOCK, count, Handle ) ) {
+        perror( "fwrite" );
+        return NOT_OK;
     }
     return OK;
 }
