@@ -2973,6 +2973,13 @@ int openDisk( char *name, bool create, int size, bool noUpdate )
     Handle = fopen( name, mode );
 
     if ( Handle == NULL && create ) {
+        if ( noUpdate ) {
+            /*
+             *  -n doesn't allow to create the image
+             */
+            fprintf( stderr, "%s: not created, option -n is set\n", name );
+            return NOT_OK;
+        }
         /*
          *  Image not found, create a new file
          */
