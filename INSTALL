@@ -9,13 +9,15 @@ make
 make clean
 sudo make install
 
-This will compile the programs into the linux subdirectory and copy them
-together with the shell scripts to /usr/local/bin.
+This will compile the tape utilities into the src subdirectory and md100
+into the md100 subdirectory and copy them together with the shell scripts
+from the md100 subdirectory to /usr/local/bin.
 
 Three shell scripts are provided to access MD100 floppies directly. Look at the
 scripts and modify them to your needs.
 
 fdutil-5.5 is needed for direct MD100 floppy disk access under Linux.
+See md100/md100.txt for details.
 
 
 Marcus von Cube

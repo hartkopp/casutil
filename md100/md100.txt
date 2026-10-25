@@ -5,9 +5,14 @@ This file describes how to read and write Casio MD-100 floppy disks on a
 Linux PC and why the md100 program handles the disk images correctly.
 
 The MD-100 is the floppy disk unit of the Casio PB-1000 (and PB-2000C).
-md100 itself never touches the floppy drive. It works on a disk image, a
-plain file that holds all sectors of the disk. The shell scripts in this
-directory copy a real MD-100 disk to such an image and back.
+md100 works on a disk image, a plain file that holds all sectors of the
+disk. The shell scripts in this directory copy a real MD-100 disk to such
+an image and back. Alternatively md100 can work directly on the floppy
+device /dev/fd0casio, which is much slower.
+
+This directory contains the source of md100 (md100.c and the LibDsk access
+module libdisk.c), the shell scripts and this documentation. "make" in the
+top level directory builds md100 here.
 
 
 Hardware requirements

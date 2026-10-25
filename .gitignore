@@ -1,3 +1,6 @@
-linux/*
-!linux/*.sh
-!linux/*.txt
+*.o
+src/*
+!src/*.c
+!src/*.h
+md100/md100
+casutil.zip

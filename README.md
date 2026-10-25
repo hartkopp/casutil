@@ -47,8 +47,17 @@ make clean
 sudo make install
 ```
 
-The programs are built into the `linux` directory and installed together
-with the shell scripts from that directory to `/usr/local/bin`.
+`make` builds the tape utilities in `src` and `md100` in the `md100`
+directory. `sudo make install` copies all programs and the MD-100 shell
+scripts to `/usr/local/bin`. `make clean` removes the object files,
+`make distclean` the programs as well.
+
+| Directory | Contents |
+|-----------|----------|
+| `src`     | source code of the tape utilities, the programs are built here |
+| `md100`   | source code of md100, shell scripts and documentation for the MD-100 floppy drive |
+| `doc`     | original documentation, BASIC comparison sheet and character set tables |
+| `pb-dump` | memory dump example for the PB-770 |
 
 
 ## Supported machines
@@ -230,7 +239,7 @@ remote control program first:
 The MD-100 is the floppy drive of the PB-1000 and the PB-2000C. `md100`
 works on disk images, files that contain all sectors of a disk. How to read
 and write real disks under Linux, the hardware requirements and the disk
-format are described in [linux/md100.txt](linux/md100.txt).
+format are described in [md100/md100.txt](md100/md100.txt).
 
 ```
 md100 [-c[S]] [-n] <image> <cmd> <options> <parameters>
@@ -289,7 +298,7 @@ documentation.
 - [doc/casioutil.html](doc/casioutil.html): the original documentation
 - [doc/basic-compare.html](doc/basic-compare.html): comparison of the BASIC
   dialects of Casio, Sharp, HP, TI, Canon and Epson pocket computers
-- [linux/md100.txt](linux/md100.txt): MD-100 floppy disks under Linux
+- [md100/md100.txt](md100/md100.txt): MD-100 floppy disks under Linux
 - character set and token tables for the FX-850P, PB-700 and Canon X-07 in
   [doc](doc)
 
