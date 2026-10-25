@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 #define LEAD_IN_TIME 20         /* tens of a second */
@@ -276,10 +276,10 @@ FILE *FileIn = NULL;
  *  Output mode and some flags
  */
 enum { MODE_BIN, MODE_ASCII, MODE_WAVE } OutputMode = MODE_BIN;
-bool Translate702 = FALSE;
-bool Translate850 = FALSE;
-bool OutputPB100 = FALSE;
-bool TranslateLog = FALSE;
+bool Translate702 = false;
+bool Translate850 = false;
+bool OutputPB100 = false;
+bool TranslateLog = false;
 
 /*
  *  Header bytes
@@ -511,7 +511,7 @@ int output_segment( void *seg, int l )
 char *find_expression( char *beg, char *p )
 {
     int plevel;
-    bool in_string = FALSE;
+    bool in_string = false;
 
     if ( p <= beg ) {
         return beg;
@@ -632,8 +632,8 @@ long read_line( char *buffer, int *err )
      *  Uppercase everything outside strings, REMarks or DATA
      *  Remove spaces
      */
-    transparent = FALSE;
-    in_string = FALSE;
+    transparent = false;
+    in_string = false;
 
     /*
      *  Keyword translation needs a second pass
@@ -656,7 +656,7 @@ long read_line( char *buffer, int *err )
                || strncmp( q - 4, "DATA", 4 ) == 0
                || strncmp( q - 3, "REM" , 3 ) == 0 ) )
         {
-            transparent = TRUE;
+            transparent = true;
             continue;
         }
         /*
@@ -685,8 +685,8 @@ long read_line( char *buffer, int *err )
          */
         /* printf( "%s\n", temp ); */
 
-        transparent = FALSE;
-        in_string = FALSE;
+        transparent = false;
+        in_string = false;
 
         /*
          *  Translate line
@@ -707,7 +707,7 @@ long read_line( char *buffer, int *err )
                  || strncmp( p - 4, "DATA", 4 ) == 0
                  || strncmp( p - 3, "REM" , 3 ) == 0 )
             {
-                transparent = TRUE;
+                transparent = true;
                 continue;
             }
             tp = Translate702 ? translation_702 : translation_850;
@@ -774,8 +774,8 @@ long read_line( char *buffer, int *err )
          */
         strcpy( temp, buffer );
 
-        in_string = FALSE;
-        transparent = FALSE;
+        in_string = false;
+        transparent = false;
 
         for ( p = temp, q = buffer; *p != '\0'; q++, p++ ) {
             /*
@@ -794,7 +794,7 @@ long read_line( char *buffer, int *err )
                     /*
                      *  End of statement detected
                      */
-                    transparent = FALSE;
+                    transparent = false;
                     --q;
                     continue;
                 }
@@ -844,7 +844,7 @@ long read_line( char *buffer, int *err )
                     /*
                      *  Skip until end of line or colon
                      */
-                    transparent = TRUE;
+                    transparent = true;
                     --q;
                     continue;
                 }
@@ -909,8 +909,8 @@ int encode( long line_number, char *line, unsigned char *buffer )
     /*
      *  Encode the rest
      */
-    transparent = FALSE;
-    in_string = FALSE;
+    transparent = false;
+    in_string = false;
 
     while ( *line != '\0' && l < DATA_SIZE ) {
         /*
@@ -974,7 +974,7 @@ int encode( long line_number, char *line, unsigned char *buffer )
                 *buff++ = 0xAF;
                 ++l;
                 ++line;
-                transparent = TRUE;
+                transparent = true;
                 continue;
             }
             if ( isupper( *line ) ) {
@@ -995,7 +995,7 @@ int encode( long line_number, char *line, unsigned char *buffer )
                         /*
                          *  DATA or REM
                          */
-                        transparent = TRUE;
+                        transparent = true;
                     }
                     line += tl;
                     *buff++ = (unsigned char) i;
@@ -1097,18 +1097,18 @@ int main( int argc, char *argv[] )
             OutputMode = MODE_WAVE;
         }
         if ( strncmp( *argv, "-1", 2 ) == 0 ) {
-            OutputPB100 = TRUE;
+            OutputPB100 = true;
         }
         if ( strncmp( *argv, "-o", 2 ) == 0 ) {
-            Translate702 = TRUE;
-            Translate850 = FALSE;
+            Translate702 = true;
+            Translate850 = false;
         }
         if ( strncmp( *argv, "-n", 2 ) == 0 ) {
-            Translate850 = TRUE;
-            Translate702 = FALSE;
+            Translate850 = true;
+            Translate702 = false;
         }
         if ( strncmp( *argv, "-l", 2 ) == 0 ) {
-            TranslateLog = TRUE;
+            TranslateLog = true;
         }
         ++argv;
         --argc;

@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 /*
@@ -148,13 +148,13 @@ const char *NewTokens[] =
 /*
  *  Flag for binary mode
  */
-bool BinMode = TRUE;
+bool BinMode = true;
 
 /*
  *  Flag for new syntax and escape generation
  */
-bool NewSyntax = FALSE;
-bool EscapeMode = TRUE;
+bool NewSyntax = false;
+bool EscapeMode = true;
 
 /*
  *  Output a character
@@ -162,8 +162,8 @@ bool EscapeMode = TRUE;
 void casioprint( int c )
 {
     struct _specials *sp;
-    static bool in_string = FALSE;
-    static bool space_pending = FALSE;
+    static bool in_string = false;
+    static bool space_pending = false;
     int l;
     const char *p;
     const char **tokens = NewSyntax ? NewTokens : Tokens;
@@ -178,8 +178,8 @@ void casioprint( int c )
         /*
          *  Statement or line end
          */
-        in_string = FALSE;
-        space_pending = FALSE;
+        in_string = false;
+        space_pending = false;
     }
     if ( space_pending && !in_string ) {
         /*
@@ -193,7 +193,7 @@ void casioprint( int c )
             putchar( ' ' );
         }
     }
-    space_pending = FALSE;
+    space_pending = false;
 
     if ( in_string && EscapeMode && c <= 0x5F ) {
         /*
@@ -235,7 +235,7 @@ void casioprint( int c )
         l = strlen( p = tokens[ c - 0x60 ] );
         if ( l > 0 && p[ l - 1 ] == ' ' ) {
             --l;
-            space_pending = TRUE;
+            space_pending = true;
         }
         printf( "%.*s", l, tokens[ c - 0x60 ] );
     }
@@ -275,8 +275,8 @@ int list( int c )
     static int prog_number = 0;
     static int segment_id = 0;
     static int file_id = 0;
-    static bool leader_expected = TRUE;
-    static bool dataseg_expected = FALSE;
+    static bool leader_expected = true;
+    static bool dataseg_expected = false;
 
     if ( !BinMode ) {
 
@@ -308,7 +308,7 @@ int list( int c )
                 /*
                  *  valid leader detected
                  */
-                leader_expected = FALSE;
+                leader_expected = false;
             }
             data_counter = 0;
             return 0;
@@ -340,7 +340,7 @@ int list( int c )
                  *  valid header byte encountered
                  */
                 data_counter = 0;
-                leader_expected = FALSE;
+                leader_expected = false;
             }
             else {
                 /* printf( "Skipped\n", c ); */
@@ -410,7 +410,7 @@ int list( int c )
             /*
              *  End Marker
              */
-            leader_expected = TRUE;
+            leader_expected = true;
             skipped = 5;
             dataseg_expected = ( c == 0xF1 );
             return 0;
@@ -528,9 +528,9 @@ int list( int c )
      *  last byte of the header segment
      */
     printf( "\n\n" );
-    leader_expected = TRUE;
+    leader_expected = true;
     skipped = 5;
-    dataseg_expected = TRUE;
+    dataseg_expected = true;
     return 0;
 }
 
@@ -548,30 +548,30 @@ int main( int argc, char **argv )
     FILE *infp = NULL;
     KCS_FILE *wfp = NULL;
     int skip;
-    bool wavemode = FALSE;
-    int ignore = FALSE;
+    bool wavemode = false;
+    int ignore = false;
 
     while ( argc > 1 && argv[ 1 ][ 0 ] == '-' ) {
 
         if ( strncmp( argv[ 1 ], "-a", 2 ) == 0 ) {
-            BinMode = FALSE;
+            BinMode = false;
         }
         if ( strncmp( argv[ 1 ], "-b", 2 ) == 0 ) {
-            BinMode = TRUE;
+            BinMode = true;
             skip = atoi( argv[ 1 ] + 2 );
         }
         if ( strncmp( argv[ 1 ], "-w", 2 ) == 0 ) {
-            BinMode = FALSE;
-            wavemode = TRUE;
+            BinMode = false;
+            wavemode = true;
         }
         if ( strncmp( argv[ 1 ], "-i", 2 ) == 0 ) {
-            ignore = TRUE;
+            ignore = true;
         }
         if ( strncmp( argv[ 1 ], "-n", 2 ) == 0 ) {
-            NewSyntax = TRUE;
+            NewSyntax = true;
         }
         if ( strncmp( argv[ 1 ], "-e", 2 ) == 0 ) {
-            EscapeMode = TRUE;
+            EscapeMode = true;
         }
         ++argv;
         --argc;

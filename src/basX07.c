@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 #include <unistd.h>
 
@@ -531,7 +531,7 @@ enum { MODE_BIN, MODE_WAVE, MODE_TEXT }
 enum { TRANS_NONE, TRANS_DOS, TRANS_WINDOWS, TRANS_UTF8 } 
     TransMode = TRANS_NONE;
 
-bool CompressSpaces = FALSE;
+bool CompressSpaces = false;
 
 /*
  *  Header bytes
@@ -786,8 +786,8 @@ long read_line( char *buffer, int *err )
      *  Uppercase everything outside strings, REMarks or DATA
      *  Remove spaces
      */
-    transparent = FALSE;
-    in_string = FALSE;
+    transparent = false;
+    in_string = false;
 
     q = buffer;
 
@@ -798,7 +798,7 @@ long read_line( char *buffer, int *err )
                || compare( q - 4, "DATA", 4 ) == 0
                || compare( q - 3, "REM" , 3 ) == 0 ) )
         {
-            transparent = TRUE;
+            transparent = true;
             continue;
         }
         /*
@@ -964,8 +964,8 @@ int encode( long line_number, char *line, char *buffer )
     /*
      *  Encode the rest
      */
-    transparent = FALSE;
-    in_string = FALSE;
+    transparent = false;
+    in_string = false;
 
     while ( *line != '\0' && l < BUFFER_SIZE - 3 ) {
 
@@ -992,7 +992,7 @@ int encode( long line_number, char *line, char *buffer )
                         /*
                          *  DATA or REM or '
                          */
-                        transparent = TRUE;
+                        transparent = true;
                     }
                     if ( tp->flag & 0x02 ) {
                         /*
@@ -1066,7 +1066,7 @@ int main( int argc, char *argv[] )
             delay = atoi( *argv + 2 );
         }
         if ( strncmp( *argv, "-s", 2 ) == 0 ) {
-            CompressSpaces = TRUE;
+            CompressSpaces = true;
         }
         if ( strncmp( *argv, "-c", 2 ) == 0 ) {
             switch ( toupper( (*argv)[ 2 ] ) ) {

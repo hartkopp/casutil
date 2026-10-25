@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include"bool.h"
+#include <stdbool.h>
 #include"wave.h"
 
 #define LEAD_IN_TIME 15         /* tens of a second */
@@ -196,7 +196,7 @@ FILE *FileIn = NULL;
  *  Output mode and flags
  */
 enum { MODE_BIN, MODE_ASCII, MODE_WAVE } OutputMode = MODE_BIN;
-bool TranslateLog = FALSE;
+bool TranslateLog = false;
 
 /*
  *  Header bytes
@@ -499,8 +499,8 @@ long read_line( char *buffer, int *err )
      *  Uppercase everything
      *  Remove spaces
      */
-    ignore = FALSE;
-    in_string = FALSE;
+    ignore = false;
+    in_string = false;
 
     /*
      *  Keyword translation needs a second pass
@@ -517,7 +517,7 @@ long read_line( char *buffer, int *err )
              *  Both statements will be removed later 
              *  but handle them here anyway
              */
-            ignore = TRUE;
+            ignore = true;
             continue;
         }
 
@@ -540,8 +540,8 @@ long read_line( char *buffer, int *err )
     /*
      *  Translate new style keywords
      */
-    ignore = FALSE;
-    in_string = FALSE;
+    ignore = false;
+    in_string = false;
     fact = 0;
     memset( plevel, 0, sizeof( plevel ) );
     
@@ -562,7 +562,7 @@ long read_line( char *buffer, int *err )
                 /*
                  *  End of statement detected
                  */
-                ignore = FALSE;
+                ignore = false;
                 --q;
                 continue;
             }
@@ -613,7 +613,7 @@ long read_line( char *buffer, int *err )
                 /*
                  *  Skip until end of line or colon
                  */
-                ignore = TRUE;
+                ignore = true;
                 --q;
                 continue;
             }
@@ -743,7 +743,7 @@ int encode( long line_number, char *line, unsigned char *buffer )
     /*
      *  Encode the rest
      */
-    in_string = FALSE;
+    in_string = false;
 
     while ( *line != '\0' && l < DATA_SIZE ) {
         /*
@@ -903,7 +903,7 @@ int main( int argc, char *argv[] )
             OutputMode = MODE_WAVE;
         }
         if ( strncmp( *argv, "-l", 2 ) == 0 ) {
-            TranslateLog = TRUE;
+            TranslateLog = true;
         }
         ++argv;
         --argc;

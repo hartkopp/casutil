@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include <strings.h>
 
 /*
@@ -51,9 +52,6 @@
 
 #define OK 0
 #define NOT_OK -1
-
-#define TRUE 1
-#define FALSE 0
 
 /*
  *  Bit definitions for FAT entries
@@ -168,7 +166,7 @@ typedef enum _escape_mode {
  *  Options parsed from command line
  */
 typedef struct _options {
-    int           ignoreCase;  /* -i */
+    bool          ignoreCase;  /* -i */
     CASE          setCase;     /* -l or -u */
     int           type;        /* -t */
     char          typeS[ 4 ];  /* -t as text */
@@ -176,13 +174,13 @@ typedef struct _options {
     MODE          mode;        /* -a or -b */
     ESCAPE_MODE   escape;      /* -e */
     char         *destination; /* -d */
-    int           noUpdate;    /* -n */
-    int           create;      /* -c */
+    bool          noUpdate;    /* -n */
+    bool          create;      /* -c */
     int           size;        /* argument to -c */
 } OPTIONS;
 
 #define DEFAULT_OPTIONS \
-    { FALSE, AS_IS, 0, "", -1, AUTO, FALSE, NULL, FALSE, FALSE, DEFAULT_BLOCKS }
+    { false, AS_IS, 0, "", -1, AUTO, NONE, NULL, false, false, DEFAULT_BLOCKS }
 
 /*
  *  Types as Strings
@@ -413,7 +411,7 @@ ESCAPE Escapes[] =
  */
 char *MyName;
 char *DiskName;
-int MustUpdate = FALSE;
+bool MustUpdate = false;
 int Blocks = DEFAULT_BLOCKS;
 unsigned char FAT_Block[ SIZE_BLOCK * BLOCKS_FAT ];
 unsigned char DirBlocks[ SIZE_BLOCK * BLOCKS_DIR ];
@@ -437,24 +435,24 @@ int cmdRen(  int argc, char **argv, OPTIONS *options );
 int cmdSet(  int argc, char **argv, OPTIONS *options );
 char *getFile( FILE_INFO *info, char *dest, MODE mode, ESCAPE_MODE escape );
 FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape, 
-                    CASE setCase, int type, int protect, int noUpdate );
+                    CASE setCase, int type, int protect, bool noUpdate );
 void delFile( FILE_INFO *info );
 FILE_INFO *renFile( FILE_INFO *info, char *newName, CASE setCase );
 FILE_INFO *setFile( FILE_INFO *info, int type, int protect );
 int printFile( FILE_INFO *info, MODE mode, ESCAPE_MODE escape, FILE *out );
 void printToken( int c, ESCAPE_MODE esc, FILE *out );
 FILE_INFO *fileInfo( DIR_ENTRY *dptr, FILE_INFO *info, CASE setCase );
-DIR_ENTRY *findFile( char *pattern, int ignoreCase, int type, int protect );
+DIR_ENTRY *findFile( char *pattern, bool ignoreCase, int type, int protect );
 int isWildcard( char *pattern );
 void expandPattern( char *pattern, char expPattern[ 8 + 3 + 1 ],
                     CASE setCase );
 int readFile( FILE_INFO *info );
-int writeFile( FILE_INFO *info, int count, int noUpdate );
+int writeFile( FILE_INFO *info, int count, bool noUpdate );
 int diskFree( void );
 int dirFree( void );
 int findFreeBlock( int start );
 int updateDisk( void );
-int openDisk( char *name, int create, int size, int noUpdate );
+int openDisk( char *name, bool create, int size, bool noUpdate );
 int closeDisk( void );
 int readBlocks( void *dest, int number, int count );
 int writeBlocks( void *source, int number, int count );
@@ -650,7 +648,7 @@ int doCmd( int argc, char **argv, OPTIONS *options )
         /*
          *  Updates are disabled
          */
-        MustUpdate = FALSE;
+        MustUpdate = false;
     }
 
     return result;
@@ -675,7 +673,7 @@ int parseOptions( int *argcp, char ***argvp, OPTIONS *options, char *opts )
             /*
              *  No updates please!
              */
-            options->noUpdate = TRUE;
+            options->noUpdate = true;
         }
         else if ( opt == 'c' ) {
             /*
@@ -705,13 +703,13 @@ int parseOptions( int *argcp, char ***argvp, OPTIONS *options, char *opts )
                 }
             }
             options->size   = size;
-            options->create = TRUE;
+            options->create = true;
         }
         else if ( opt == 'i' ) {
             /*
              *  Ignore case
              */
-            options->ignoreCase = TRUE;
+            options->ignoreCase = true;
         }
         else if ( opt == 'l' ) {
             /*
@@ -920,7 +918,7 @@ int cmdDir( int argc, char **argv, OPTIONS *options )
          */
         count = 0;
         p = pattern;
-        while ( TRUE ) {
+        while ( true ) {
             info = fileInfo( findFile( p, options->ignoreCase,
                                           options->type,
                                           options->protect ),
@@ -985,7 +983,7 @@ int cmdType( int argc, char **argv, OPTIONS *options )
          */
         count = 0;
         p = pattern;
-        while ( TRUE ) {
+        while ( true ) {
             info = fileInfo( findFile( p, options->ignoreCase,
                                           options->type,
                                           options->protect ),
@@ -1078,7 +1076,7 @@ int cmdMget( int argc, char **argv, OPTIONS *options )
          */
         count = 0;
         p = pattern;
-        while ( TRUE ) {
+        while ( true ) {
             info = fileInfo( findFile( p, options->ignoreCase,
                                           options->type,
                                           options->protect ),
@@ -1219,7 +1217,7 @@ int cmdDel( int argc, char **argv, OPTIONS *options )
          */
         count = 0;
         p = pattern;
-        while ( TRUE ) {
+        while ( true ) {
             info = fileInfo( findFile( p, options->ignoreCase,
                                           options->type,
                                           options->protect ),
@@ -1244,7 +1242,7 @@ int cmdDel( int argc, char **argv, OPTIONS *options )
     }
     else {
         printf( "No files deleted\n" );
-        MustUpdate = FALSE;
+        MustUpdate = false;
     }
     return OK;
 }
@@ -1281,7 +1279,7 @@ int cmdRen( int argc, char **argv, OPTIONS *options )
         count = 0;
         unchanged = 0;
         p = pattern;
-        while ( TRUE ) {
+        while ( true ) {
             info = fileInfo( findFile( p, options->ignoreCase,
                                           options->type,
                                           options->protect ),
@@ -1321,7 +1319,7 @@ int cmdRen( int argc, char **argv, OPTIONS *options )
     }
     else {
         printf( "No files renamed\n" );
-        MustUpdate = FALSE;
+        MustUpdate = false;
     }
     return OK;
 }
@@ -1375,7 +1373,7 @@ int cmdSet( int argc, char **argv, OPTIONS *options )
         count = 0;
         unchanged = 0;
         p = pattern;
-        while ( TRUE ) {
+        while ( true ) {
             info = fileInfo( findFile( p, options->ignoreCase,
                                           options->type,
                                           options->protect ),
@@ -1482,7 +1480,7 @@ char *getFile( FILE_INFO *info, char *dest, MODE mode, ESCAPE_MODE escape )
     int count;
     int i, j, l;
     FILE *out;
-    int binary;
+    bool binary;
     
     /*
      *  Build destination filename
@@ -1527,7 +1525,7 @@ char *getFile( FILE_INFO *info, char *dest, MODE mode, ESCAPE_MODE escape )
         binary = info->type == TYPE_M;
     }
     else if ( mode == BINARY ) {
-        binary = TRUE;
+        binary = true;
     }
     else {
         binary = info->type != TYPE_C && info->type != TYPE_S;
@@ -1545,7 +1543,7 @@ char *getFile( FILE_INFO *info, char *dest, MODE mode, ESCAPE_MODE escape )
         /*
          *  Transparent copy
          */
-        while ( TRUE ) {
+        while ( true ) {
             count = readFile( info );
 #if DEBUG
             printf( "[count=%d]\n", count );
@@ -1587,13 +1585,13 @@ char *getFile( FILE_INFO *info, char *dest, MODE mode, ESCAPE_MODE escape )
  *  Copy a file to MD-100
  */
 FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
-                    CASE setCase, int type, int protect, int noUpdate )
+                    CASE setCase, int type, int protect, bool noUpdate )
 {
     int free = diskFree();
     long length;
     FILE *in;
     int i, j;
-    int mustRead;
+    bool mustRead;
     char *p;
     FILE_INFO *info;
     DIR_ENTRY newEntry;
@@ -1822,7 +1820,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
      *  Update the directory
      */
     memcpy( info->entry, &newEntry, sizeof( DIR_ENTRY ) );
-    MustUpdate = TRUE;
+    MustUpdate = true;
 
     /*
      *  Reposition source to start of file
@@ -1840,7 +1838,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
     errno = 0;
     length = 0;
     clearBlockBuffer();
-    mustRead = TRUE;
+    mustRead = true;
     do {
         if ( mustRead ) {
             /*
@@ -1866,7 +1864,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
                  */
                 Block[ length ] = '\r';
                 i = '\n';
-                mustRead = FALSE;
+                mustRead = false;
             }
             else if ( mode == ASCII && i == '\r' ) {
                 /*
@@ -1900,7 +1898,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
                          */
                         /* printf( "OK\n" ); */
                         Block[ length ] = ep->token;
-                        mustRead = TRUE;
+                        mustRead = true;
                         break;
                     }
                     else if ( j == 1 ) {
@@ -1917,7 +1915,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
                             /* printf( "NOT OK\n" ); */
                             Block[ length ] = tmp[ 0 ];
                             i = tmp[ 1 ];
-                            mustRead = FALSE;
+                            mustRead = false;
                         }
                         else {
                             /*
@@ -1925,7 +1923,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
                              */
                             /* printf( "OK:HEX\n" ); */
                             Block[ length ] = (unsigned char) i;
-                            mustRead = TRUE;
+                            mustRead = true;
                         }
                     }
                 }
@@ -1944,7 +1942,7 @@ FILE_INFO *putFile( char *source, char *dest, MODE mode, ESCAPE_MODE escape,
                  *  Copy the byte to block
                  */
                 Block[ length ] = (unsigned char) i;
-                mustRead = TRUE;
+                mustRead = true;
             }
         }
 
@@ -2019,7 +2017,7 @@ void delFile( FILE_INFO *info )
     memset( info->entry, '\0', sizeof( DIR_ENTRY ) );
 
     info->next = 0;
-    MustUpdate = TRUE;
+    MustUpdate = true;
 }
 
 
@@ -2032,7 +2030,7 @@ FILE_INFO *renFile( FILE_INFO *info, char *newName, CASE setCase )
     static FILE_INFO newInfo;
     int i;
     char c;
-    int found;
+    bool found;
 
     /*
      *  New name my contain wildcards
@@ -2055,7 +2053,7 @@ FILE_INFO *renFile( FILE_INFO *info, char *newName, CASE setCase )
     /*
      *  Check if name exists
      */
-    for ( i = 0, found = FALSE; i < MAX_DIR_ENTRY; ++i ) {
+    for ( i = 0, found = false; i < MAX_DIR_ENTRY; ++i ) {
         /*
          *  Find used entry with same name,
          *  but don't stumble over current entry!
@@ -2081,7 +2079,7 @@ FILE_INFO *renFile( FILE_INFO *info, char *newName, CASE setCase )
          */
         memcpy( info->entry->filename.full, newPattern, 8 + 3 );
         fileInfo( info->entry, &newInfo, AS_IS );
-        MustUpdate = TRUE;
+        MustUpdate = true;
     }
     return &newInfo;
 }
@@ -2103,7 +2101,7 @@ FILE_INFO *setFile( FILE_INFO *info, int type, int protect )
     if ( protect >= 0 ) {
         info->entry->protect = (unsigned char) protect;
     }
-    MustUpdate = TRUE;
+    MustUpdate = true;
     return fileInfo( info->entry, &newInfo, AS_IS );
 }
 
@@ -2120,9 +2118,9 @@ int printFile( FILE_INFO *info, MODE mode, ESCAPE_MODE escape, FILE *out )
     int pos = 0;
     int length = 0;
     int line_nr = 0;
-    int first = TRUE;
+    bool first = true;
 
-    while ( TRUE ) {
+    while ( true ) {
         count = readFile( info );
         start = 0;
 #if DEBUG
@@ -2259,7 +2257,7 @@ int printFile( FILE_INFO *info, MODE mode, ESCAPE_MODE escape, FILE *out )
             }
             break;
         }
-        first = FALSE;
+        first = false;
     }
     if ( info->type == TYPE_C || info->type == TYPE_S ) {
         /*
@@ -2278,11 +2276,11 @@ int printFile( FILE_INFO *info, MODE mode, ESCAPE_MODE escape, FILE *out )
  */
 void printToken( int c, ESCAPE_MODE escape, FILE *out )
 {
-    static int insert_space = FALSE;
-    static int pending_colon = FALSE;
+    static bool insert_space = false;
+    static bool pending_colon = false;
     static int last = 0;
-    static int quoted = FALSE;
-    static int quoted_until_eol = FALSE;
+    static bool quoted = false;
+    static bool quoted_until_eol = false;
     char *p = NULL;
     char buffer[] = "\\XX\\XX";
     static int prefix = 0;
@@ -2315,13 +2313,13 @@ void printToken( int c, ESCAPE_MODE escape, FILE *out )
             break;
 
         case 0x01:
-            pending_colon = TRUE;
+            pending_colon = true;
             c = -1;
             break;
 
         case 0x02:
             p = "'";
-            quoted_until_eol = TRUE;
+            quoted_until_eol = true;
             break;
 
         case 0x03:
@@ -2373,10 +2371,10 @@ void printToken( int c, ESCAPE_MODE escape, FILE *out )
              *  The colon had been postponed
              */
             fputc( ':', out );
-            pending_colon = FALSE;
+            pending_colon = false;
         }
         fputc( c, out );
-        insert_space = FALSE;
+        insert_space = false;
         last = ' ';
     }
     else {
@@ -2424,7 +2422,7 @@ void printToken( int c, ESCAPE_MODE escape, FILE *out )
                  */
                 fputc( ':', out );
             }
-            pending_colon = FALSE;
+            pending_colon = false;
         }
 
         /*
@@ -2438,12 +2436,12 @@ void printToken( int c, ESCAPE_MODE escape, FILE *out )
             
             case '"':
                 quoted = !quoted || quoted_until_eol;
-                insert_space = FALSE;
+                insert_space = false;
                 break;
 
             case '\n':
-                quoted = quoted_until_eol = FALSE;
-                insert_space = FALSE;
+                quoted = quoted_until_eol = false;
+                insert_space = false;
                 break;
             }
 
@@ -2452,7 +2450,7 @@ void printToken( int c, ESCAPE_MODE escape, FILE *out )
                  *  Print char as is, no further translation
                  */
                 fputc( c, out );
-                insert_space = FALSE;
+                insert_space = false;
             }
             else {
                 /*
@@ -2465,7 +2463,7 @@ void printToken( int c, ESCAPE_MODE escape, FILE *out )
                     /*
                      *  Token ends with a space
                      */
-                    insert_space = TRUE;
+                    insert_space = true;
                 }
                 else {
                     /*
@@ -2475,7 +2473,7 @@ void printToken( int c, ESCAPE_MODE escape, FILE *out )
                         fputc( ' ', out );
                     }
                     fputc( c, out );
-                    insert_space = FALSE;
+                    insert_space = false;
                 }
             }
             last = c;
@@ -2600,7 +2598,7 @@ FILE_INFO *fileInfo( DIR_ENTRY *dptr, FILE_INFO *info, CASE setCase )
         info->blocks = 1;
         l = 0;
 
-        while ( TRUE ) {
+        while ( true ) {
             /*
              *  Count length && get next block
              */
@@ -2659,14 +2657,14 @@ FILE_INFO *fileInfo( DIR_ENTRY *dptr, FILE_INFO *info, CASE setCase )
 /*
  *  Find a file in the directory
  */
-DIR_ENTRY *findFile( char *pattern, int ignoreCase, int type, int protect )
+DIR_ENTRY *findFile( char *pattern, bool ignoreCase, int type, int protect )
 {
     static char expPattern[ 8 + 3 + 1 ] = "";
     static int position = 0;
     int i;
     char c;
     int count;
-    int found = FALSE;
+    bool found = false;
     DIR_ENTRY *dptr;
 
     if ( pattern != NULL ) {
@@ -2795,7 +2793,7 @@ int readFile( FILE_INFO *info )
  *  If count < SIZE_BLOCK, an EOF marker is added.
  *  Returns OK or NOT_OK (-1) if error.
  */
-int writeFile( FILE_INFO *info, int count, int noUpdate )
+int writeFile( FILE_INFO *info, int count, bool noUpdate )
 {
     int i = info->next & FB_BLOCK;
 
@@ -2845,7 +2843,7 @@ int writeFile( FILE_INFO *info, int count, int noUpdate )
      */
     FAT_Block[ 2 * i ]     = (unsigned char) ( info->next >> 8 );
     FAT_Block[ 2 * i + 1 ] = (unsigned char) info->next;
-    MustUpdate = TRUE;
+    MustUpdate = true;
 
     /*
      *  Write data
@@ -3000,19 +2998,19 @@ int noDirectAccess( void )
  *  Global file handle
  */
 FILE *Handle;
-int Direct = FALSE;
+bool Direct = false;
 
 
 /*
  *  Open the disk image or device
  */
-int openDisk( char *name, int create, int size, int noUpdate )
+int openDisk( char *name, bool create, int size, bool noUpdate )
 {
     if ( strlen( name ) == 2 && name[ 1 ] == ':' ) {
         /*
          *  Drive name given
          */
-        Direct = TRUE;
+        Direct = true;
         Blocks = DEFAULT_BLOCKS;
         return openDirect( name, create, noUpdate );
     }
@@ -3023,7 +3021,7 @@ int openDisk( char *name, int create, int size, int noUpdate )
         char *mode;
         unsigned long image_size;
         
-        Direct = FALSE;
+        Direct = false;
         Blocks = size;
         mode = noUpdate ? "rb" : "r+b";
 

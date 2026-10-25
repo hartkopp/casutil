@@ -49,7 +49,7 @@ int checkError( char *message, dsk_err_t err )
 /*
  *  Get access to the device
  */
-int openDirect( char *name, int create, int noUpdate )
+int openDirect( char *name, bool create, bool noUpdate )
 {
     dsk_err_t err = dsk_open( &DskHandle, name, NULL, NULL );
 #if DEBUG

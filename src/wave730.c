@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 #define LEAD_IN_TIME 20       /* tens of a second */
@@ -49,7 +49,7 @@ const char characters[] =
 " +-*/^!\"#$> = < 0123456789. )( EABCDEFGHIJKLMNOPQRSTUVWXYZ      abcdefghijklmnopqrstuvwxyz  ?,;:o ' @x: <   u v>%  [&_'.]       ";
 
 /* flag for binary mode */
-bool BinMode = TRUE;
+bool BinMode = true;
 
 /* wave file handling */
 KCS_FILE *Out;
@@ -96,9 +96,9 @@ int output (int c)
   static int data_counter = 0;
   static int segment_id = 0;
   static int file_id = 0;
-  static bool lead_in_expected = TRUE;
-  static bool dataseg_expected = FALSE;
-  static bool password_expected = FALSE;
+  static bool lead_in_expected = true;
+  static bool dataseg_expected = false;
+  static bool password_expected = false;
 
   if ( !BinMode ) {
 
@@ -132,7 +132,7 @@ int output (int c)
         if ( LeadInTime != 0 && 0 != kcsLeadIn( Out, LeadInTime ) ) {
           return 7;   /* I/O error */
         }
-        lead_in_expected = FALSE;  /* valid lead_in detected */
+        lead_in_expected = false;  /* valid lead_in detected */
         LeadInTime = 0; /* Don't write another lead-in in this block */
       }
       skipped = 0;
@@ -152,7 +152,7 @@ int output (int c)
       {
         /* valid header byte encountered */
         data_counter = 0;
-        lead_in_expected = FALSE;
+        lead_in_expected = false;
         if ( 0 != kcsLeadIn( Out, LeadInTime ) ) {
           return 7;
         }
@@ -214,9 +214,9 @@ int output (int c)
 /* End Marker ? */
     if (c == 0xF0 || c == 0xF1)
     {
-      lead_in_expected = TRUE;
+      lead_in_expected = true;
       dataseg_expected = (c == 0xF1);
-      password_expected = FALSE;
+      password_expected = false;
       return 0;
     }
 
@@ -258,8 +258,8 @@ int output (int c)
 
 /* last byte of the header segment */
   printf( "\n" );
-  lead_in_expected = TRUE;
-  dataseg_expected = TRUE;
+  lead_in_expected = true;
+  dataseg_expected = true;
   return 0;
 }
 
@@ -276,13 +276,13 @@ int main(int argc, char *argv[])
 
   if ( argc > 1 ) {
     if ( strncmp( argv[ 1 ], "-a", 2 ) == 0 ) {
-      BinMode = FALSE;
+      BinMode = false;
       ++argv;
       --argc;
     }
 
     if ( strncmp( argv[ 1 ], "-b", 2 ) == 0 ) {
-      BinMode = TRUE;
+      BinMode = true;
       ++argv;
       --argc;
       skip = atoi( *argv + 2 );

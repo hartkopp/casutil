@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 /*
@@ -229,7 +229,7 @@ unsigned char Zero[ 8 ] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 /*
  *  Flag for binary mode 
  */
-bool BinMode = TRUE;
+bool BinMode = true;
 
 /*
  *  Escape mode
@@ -256,7 +256,7 @@ int Width = 40;
  *  File is from fx-8000G tape.
  *  For the time being, this is always the case.
  */
-bool Fx8000G = TRUE;
+bool Fx8000G = true;
 
 /*
  *  Bitmap filename
@@ -850,9 +850,9 @@ TOKEN *findToken( int c, TOKEN *tp )
  */
 void casioprint( int c )
 {
-    static bool insert_space = FALSE;
-    static bool quoted = FALSE;
-    static bool ext_7F = FALSE;
+    static bool insert_space = false;
+    static bool quoted = false;
+    static bool ext_7F = false;
     static int last = 0;
     static int column = 0;
     bool literal_space = c == ' ';
@@ -867,14 +867,14 @@ void casioprint( int c )
          *  End of file
          */
         p = "\n";
-        quoted = FALSE;
-        insert_space = FALSE;
+        quoted = false;
+        insert_space = false;
     }
     else if ( c == 0x7F ) {
         /*
          *  Extended token follows
          */
-        ext_7F = TRUE;
+        ext_7F = true;
         return;
     }
     else if ( c < ' ' || c >= 0x80 || ext_7F ) {
@@ -934,7 +934,7 @@ void casioprint( int c )
             p = buffer;
         }
     }
-    ext_7F = FALSE;
+    ext_7F = false;
 
     if ( p == NULL ) {
         /*
@@ -983,7 +983,7 @@ void casioprint( int c )
                 /*
                  *  Token ends with a space
                  */
-                insert_space = TRUE;
+                insert_space = true;
                 c = 0;
             }
             else {
@@ -995,7 +995,7 @@ void casioprint( int c )
                     ++column;
                 }
                 putchar( c );
-                insert_space = FALSE;
+                insert_space = false;
             }
         }
         last = c;
@@ -1553,11 +1553,11 @@ int list( int c )
     static int editor_count = 0;
     static unsigned char number[ 8 ];
 
-    static bool leader_expected = TRUE;
-    static bool dataseg_expected = FALSE;
-    static bool ignore_lead_in = FALSE;
-    static bool ignore_password = FALSE;
-    static bool echo = FALSE;
+    static bool leader_expected = true;
+    static bool dataseg_expected = false;
+    static bool ignore_lead_in = false;
+    static bool ignore_password = false;
+    static bool echo = false;
 
     char *p;
     int i, err;
@@ -1598,7 +1598,7 @@ int list( int c )
                 /*
                  *  Leader contains at least 8 idle strings
                  */
-                leader_expected = FALSE;
+                leader_expected = false;
             }
             data_counter = 0;
             return 0;
@@ -1608,7 +1608,7 @@ int list( int c )
              *  Data byte received
              */
             idle_counter = 0;
-            ignore_lead_in = FALSE;
+            ignore_lead_in = false;
             if ( leader_expected ) {
                 /*
                  *  "Leader expected" error
@@ -1629,7 +1629,7 @@ int list( int c )
             /*
              *  We expect the start of a block
              */
-            ignore_lead_in = FALSE;
+            ignore_lead_in = false;
 
             if ( ( c & 0xF0 ) == 0xF0 || c == TYPE_HEADER ) {
                 /*
@@ -1637,7 +1637,7 @@ int list( int c )
                  *  Everything starting with 0xF_ is a data segment
                  */
                 data_counter = 0;
-                leader_expected = FALSE;
+                leader_expected = false;
             }
             else {
 #if DEBUG
@@ -1677,7 +1677,7 @@ int list( int c )
             /*
              *  Length follows after short lead-in
              */
-            ignore_lead_in = TRUE;
+            ignore_lead_in = true;
             length_counter = 2;
             return 0;
 
@@ -1722,13 +1722,13 @@ int list( int c )
                 /*
                  *  Empty block
                  */
-                leader_expected = TRUE;
+                leader_expected = true;
             }
             else {
                 /*
                  *  There is a short lead-in after the length
                  */
-                ignore_lead_in = TRUE;
+                ignore_lead_in = true;
             }
         }
         return 0;
@@ -1787,7 +1787,7 @@ int list( int c )
             if ( !cat ) {
                 printHeader();
             }
-            dataseg_expected = TRUE;
+            dataseg_expected = true;
             block_length = 1;
         }
         break;
@@ -2021,15 +2021,15 @@ int list( int c )
                     printf( "p%c: ", prog_no + 'A' - 10 );
                     file_size = 1;
                     *file_ptr++ = '\''; /* start with comment */
-                    ignore_password = FALSE;
-                    echo = TRUE;
+                    ignore_password = false;
+                    echo = true;
                 }
             }
             if ( c == 0x00 ) {
                 /*
                  *  Password starts here (not written to CAS file)
                  */
-                ignore_password = TRUE;
+                ignore_password = true;
             }
             else if ( c == 0x01 ) {
                 /*
@@ -2039,8 +2039,8 @@ int list( int c )
                     putchar( '\n' );
                     ++file_size;
                     *file_ptr++ = 0x0D; /* terminate the comment */
-                    ignore_password = FALSE;
-                    echo = FALSE;
+                    ignore_password = false;
+                    echo = false;
                 }
             }
             else if ( c != 0xFF && !ignore_password && prog_no < 38 ) {
@@ -2420,7 +2420,7 @@ int list( int c )
         if ( !cat && !cas ) {
             printf( "End of Recording" );
         }
-        dataseg_expected = FALSE;
+        dataseg_expected = false;
         break;
     }
 
@@ -2428,7 +2428,7 @@ int list( int c )
         /*
          *  End of block
          */
-        leader_expected = TRUE;
+        leader_expected = true;
         data_counter = 0;
         if ( !cat && !cas ) {
             casioprint( 0xFF );
@@ -2451,9 +2451,9 @@ int main( int argc, char *argv[] )
     KCS_FILE *wfp = NULL;
     char *cas_file = NULL;
     int skip = 0;
-    bool wavemode = FALSE;
-    bool first = TRUE;
-    bool ignore = TRUE;
+    bool wavemode = false;
+    bool first = true;
+    bool ignore = true;
     int baud = -2400;
 
     ++argv;
@@ -2462,19 +2462,19 @@ int main( int argc, char *argv[] )
     while ( argc > 1 && **argv == '-' ) {
 
         if ( strncmp( *argv, "-b", 2 ) == 0 ) {
-            BinMode = TRUE;
+            BinMode = true;
             skip = atoi( *argv + 2 );
         }
         if ( strncmp( *argv, "-w", 2 ) == 0 ) {
-            BinMode = FALSE;
-            wavemode = TRUE;
-            Fx8000G = TRUE;
+            BinMode = false;
+            wavemode = true;
+            Fx8000G = true;
             if ( (*argv)[ 2 ] == '-' ) {
                 baud = -baud;
             }
         }
         if ( strncmp( argv[ 1 ], "-i", 2 ) == 0 ) {
-            ignore = TRUE;
+            ignore = true;
         }
         if ( strncmp( *argv, "-e", 2 ) == 0 ) {
             switch ( toupper( (*argv)[ 2 ] ) ) {
@@ -2671,7 +2671,7 @@ int main( int argc, char *argv[] )
                  *  Check if tape or CAS file
                  */
                 Fx8000G = c1 != ':';
-                first = FALSE;
+                first = false;
             }
             err_code = Fx8000G ? list( c1 ) : 7;
             if ( err_code != 0 ) {

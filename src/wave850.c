@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 #define LEAD_IN_TIME 20       /* tens of a second */
@@ -51,17 +51,17 @@ int Baudrate = 0;
 /*
  *  Flag for binary mode 
  */
-bool BinMode = TRUE;
+bool BinMode = true;
 
 /*
  *  Flag set if FX-850P or PB-1000
  */
-bool Fx850P = FALSE;
+bool Fx850P = false;
 
 /*
  *  Flag set if FP-200
  */
-bool Fp200 = FALSE;
+bool Fp200 = false;
 
 /*
  *  Header bytes
@@ -175,11 +175,11 @@ int output( int c )
     static int program_length = 0;
     static int prog_number = 0;
 
-    static bool lead_in_expected = TRUE;
-    static bool dataseg_expected = FALSE;
-    static bool textline_expected = FALSE;
-    static bool progtab_expected = FALSE;
-    static bool last_segment = FALSE;
+    static bool lead_in_expected = true;
+    static bool dataseg_expected = false;
+    static bool textline_expected = false;
+    static bool progtab_expected = false;
+    static bool last_segment = false;
 
     static int progtab[ 10 ];
 
@@ -227,7 +227,7 @@ int output( int c )
                 /*
                  *  Lead-in contains at least 12 idle strings
                  */
-                lead_in_expected = FALSE;
+                lead_in_expected = false;
 
                 /*
                  *  Write a lead in to the file
@@ -289,7 +289,7 @@ int output( int c )
                  *  Valid header byte encountered
                  */
                 data_counter = 0;
-                lead_in_expected = FALSE;
+                lead_in_expected = false;
 #if DEBUG
                 printf( "Segment: %c\n", c );
 #endif
@@ -382,7 +382,7 @@ int output( int c )
          *  Skip checksums, termination chars and the like
          */
         if ( --ignore_counter == 0 ) {
-            lead_in_expected = TRUE;
+            lead_in_expected = true;
         }
         return 0;
     }
@@ -401,7 +401,7 @@ int output( int c )
 #endif
             length_counter = 2;
             transparent_counter = 0;
-            textline_expected = FALSE;
+            textline_expected = false;
             return 0;
         }
 
@@ -437,7 +437,7 @@ int output( int c )
                  *  Skip checksum byte
                  */
                 if ( last_segment ) {
-                    dataseg_expected = FALSE;
+                    dataseg_expected = false;
                 }
                 ignore_counter = Fp200 ? 2 : 1;
             }
@@ -454,9 +454,9 @@ int output( int c )
                  */
                 return 9;
             }
-            last_segment = FALSE;
+            last_segment = false;
             ptlength_counter = 2;
-            progtab_expected  = FALSE;
+            progtab_expected  = false;
             return 0;
         }
 
@@ -508,7 +508,7 @@ int output( int c )
             /*
              *  End of segment marker
              */
-            lead_in_expected = TRUE;
+            lead_in_expected = true;
             dataseg_expected = ( c == 0xF1 );
             return 0;
         }
@@ -531,7 +531,7 @@ int output( int c )
                      */
                     return 7;
                 }
-                textline_expected = TRUE;
+                textline_expected = true;
                 return 0;
 
             case TYPE_ALL850:
@@ -539,7 +539,7 @@ int output( int c )
                     /*
                      *  Program table for 10 Programs follows
                      */
-                    progtab_expected = TRUE;
+                    progtab_expected = true;
                     return 0;
                 }
                 if ( c != 0x10 ) {
@@ -655,10 +655,10 @@ int output( int c )
         Fx850P = Header.file_type == TYPE_PROG850
               || Header.file_type == TYPE_ALL850;
         if ( Fp200 ) {
-            Fx850P = FALSE;
+            Fx850P = false;
         }
         ignore_counter = Fp200 ? 2 : 1;
-        dataseg_expected = TRUE;
+        dataseg_expected = true;
 
         Header.segment_id = segment_id;
 
@@ -730,11 +730,11 @@ int main( int argc, char *argv[] )
          *  Options
          */
         if ( strncmp( *argv, "-b", 2 ) == 0 ) {
-            BinMode = TRUE;
+            BinMode = true;
             skip = atoi( *argv + 2 );
         }
         if ( strncmp( *argv, "-a", 2 ) == 0 ) {
-            BinMode = FALSE;
+            BinMode = false;
             skip = atoi( *argv + 2 );
         }
         if ( strncmp( *argv, "-f", 2 ) == 0 ) {
@@ -745,7 +745,7 @@ int main( int argc, char *argv[] )
         }
         if ( strncmp( *argv, "-2", 2 ) == 0 ) {
             Baudrate = 300;
-            Fp200 = TRUE;
+            Fp200 = true;
         }
         ++argv;
         --argc;
@@ -874,7 +874,7 @@ int main( int argc, char *argv[] )
         }
     }
     if ( Fp200 ) {
-        Out->raw = TRUE; /* No lead out sequence */
+        Out->raw = true; /* No lead out sequence */
         kcsLeadIn( Out, 1 ); /* short leader for termination */
     }
 

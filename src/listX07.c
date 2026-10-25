@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 /*
@@ -481,7 +481,7 @@ TRANSLATE ToUtf8[] =
 /*
  *  Binary mode
  */
-bool BinMode = TRUE;
+bool BinMode = true;
 
 /*
  *  Escape mode
@@ -516,12 +516,12 @@ void printHeader( void )
  */
 void canonprint( int c )
 {
-    static bool insert_space = FALSE;
+    static bool insert_space = false;
     static int last = 0;
-    static bool quoted = FALSE;
-    static bool quoted_until_eol = FALSE;
-    static bool colon_pending = FALSE;
-    static bool remark_pending = FALSE;
+    static bool quoted = false;
+    static bool quoted_until_eol = false;
+    static bool colon_pending = false;
+    static bool remark_pending = false;
     unsigned char *p = NULL;
     char buffer[] = "\\XX\\XX";
     struct _escapes *ep;
@@ -531,12 +531,12 @@ void canonprint( int c )
         /*
          *  check for sequence :REM\FF or :ELSE
          */
-        colon_pending = FALSE;
+        colon_pending = false;
         if ( c == 0x8E ) {
             /*
              *  REM found
              */
-            remark_pending = TRUE;
+            remark_pending = true;
             return;
         }
         else if ( c == 0x90 ) {
@@ -555,20 +555,20 @@ void canonprint( int c )
         /*
          *  :REM
          */
-        remark_pending = FALSE;
+        remark_pending = false;
         if ( c != 0xff ) {
             /*
              *  Not ' - output the pending :REM and process next char
              */
             printf( ":REM" );
-            quoted = quoted_until_eol = TRUE;
+            quoted = quoted_until_eol = true;
         }  
     }
     if ( c == ':' && !quoted ) {
         /*
          *  Can't print : until next char is known
          */
-        colon_pending = TRUE;
+        colon_pending = true;
         return;
     }
     else if ( c == 0x00 ) {
@@ -586,7 +586,7 @@ void canonprint( int c )
             /*
              *  DATA, REM or '
              */
-            quoted = quoted_until_eol = TRUE;
+            quoted = quoted_until_eol = true;
         }
         if ( p == NULL ) {
             /*
@@ -602,7 +602,7 @@ void canonprint( int c )
          *  Literal space is always printed
          */
         putchar( c );
-        insert_space = FALSE;
+        insert_space = false;
         last = ' ';
     }
     else {
@@ -688,12 +688,12 @@ void canonprint( int c )
             
             case '"':
                 quoted = !quoted || quoted_until_eol;
-                insert_space = FALSE;
+                insert_space = false;
                 break;
 
             case '\n':
-                quoted = quoted_until_eol = FALSE;
-                insert_space = FALSE;
+                quoted = quoted_until_eol = false;
+                insert_space = false;
                 break;
             }
 
@@ -708,7 +708,7 @@ void canonprint( int c )
                  *  Print char as is, no further translation
                  */
                 putchar( c );
-                insert_space = FALSE;
+                insert_space = false;
             }
             else {
                 /*
@@ -718,7 +718,7 @@ void canonprint( int c )
                     /*
                      *  Token ends with a space
                      */
-                    insert_space = TRUE;
+                    insert_space = true;
                 }
                 else {
                     /*
@@ -728,7 +728,7 @@ void canonprint( int c )
                         putchar( ' ' );
                     }
                     putchar( c );
-                    insert_space = FALSE;
+                    insert_space = false;
                 }
             }
             last = c;
@@ -755,8 +755,8 @@ int list( int c )
     static int line_pointer = 0x553; /* BASIC area start */
     static int line_length = 0;
 
-    static bool leader_expected = TRUE;
-    static bool dataseg_expected = FALSE;
+    static bool leader_expected = true;
+    static bool dataseg_expected = false;
 
     if ( !BinMode ) {
         /*
@@ -784,7 +784,7 @@ int list( int c )
                 /*
                  *  Leader contains at least 12 idle strings
                  */
-                leader_expected = FALSE;
+                leader_expected = false;
             }
             data_counter = 0;
             return 0;
@@ -823,7 +823,7 @@ int list( int c )
                  *  Just assume it has started
                  */
                 data_counter = 0;
-                leader_expected = FALSE;
+                leader_expected = false;
 #if DEBUG
                 printf( "\nData found\n" );
 #endif                    
@@ -840,7 +840,7 @@ int list( int c )
                     printf( "\nHeader found\n" );
 #endif                    
                     data_counter = 0;
-                    leader_expected = FALSE;
+                    leader_expected = false;
                 }
                 else {
 #if DEBUG
@@ -974,8 +974,8 @@ int list( int c )
          *  End of header
          */
         printHeader();
-        dataseg_expected = TRUE;
-        leader_expected = TRUE;
+        dataseg_expected = true;
+        leader_expected = true;
     }
     return 0;
 }
@@ -992,8 +992,8 @@ int main( int argc, char *argv[] )
     FILE *infp = NULL;
     KCS_FILE *wfp = NULL;
     int skip = 0;
-    bool wavemode = FALSE;
-    bool ignore = FALSE;
+    bool wavemode = false;
+    bool ignore = false;
     int baud = 1200;
 
     ++argv;
@@ -1002,18 +1002,18 @@ int main( int argc, char *argv[] )
     while ( argc > 1 && **argv == '-' ) {
 
         if ( strncmp( *argv, "-b", 2 ) == 0 ) {
-            BinMode = TRUE;
+            BinMode = true;
             skip = atoi( *argv + 2 );
         }
         if ( strncmp( *argv, "-w", 2 ) == 0 ) {
-            BinMode = FALSE;
-            wavemode = TRUE;
+            BinMode = false;
+            wavemode = true;
             if ( (*argv)[ 2 ] == '-' ) {
                 baud = -baud;
             }
         }
         if ( strncmp( argv[ 1 ], "-i", 2 ) == 0 ) {
-            ignore = TRUE;
+            ignore = true;
         }
         if ( strncmp( *argv, "-e", 2 ) == 0 ) {
             switch ( toupper( (*argv)[ 2 ] ) ) {

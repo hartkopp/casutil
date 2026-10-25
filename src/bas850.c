@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 #define LEAD_IN_TIME 20       /* tens of a second */
@@ -940,13 +940,13 @@ FILE *FileIn = NULL;
  *  Output mode and some flags
  */
 enum { MODE_BIN, MODE_ASCII, MODE_WAVE, MODE_TEXT } OutputMode = MODE_BIN;
-bool Uppercase = FALSE;
-bool Lowercase = FALSE;
-bool Translate = FALSE;
-bool JisBasic = FALSE;
-bool PbEscapes = FALSE;
-bool Fp200 = FALSE;
-bool AsciiLargeBlocks = FALSE;
+bool Uppercase = false;
+bool Lowercase = false;
+bool Translate = false;
+bool JisBasic = false;
+bool PbEscapes = false;
+bool Fp200 = false;
+bool AsciiLargeBlocks = false;
 int LeadInTime;
 int DataLines;
 enum { LOG_NONE, LOG_FX, LOG_PB } LogarithmMode = LOG_NONE;
@@ -1293,7 +1293,7 @@ int output_ASCII( int c, bool flush, bool eof )
 char *find_expression( char *beg, char *p )
 {
     int plevel;
-    bool in_string = FALSE;
+    bool in_string = false;
 
     if ( p <= beg ) {
         return beg;
@@ -1352,7 +1352,7 @@ long read_line( char *buffer, int *err )
     bool in_string, transparent;
     struct _translate *tp;
     TOKEN *ep;
-    bool paren = FALSE;
+    bool paren = false;
     
     errno = 0;
     p = fgets( temp, 256, FileIn );
@@ -1428,8 +1428,8 @@ long read_line( char *buffer, int *err )
          *  Uppercase everything outside strings, REMarks or DATA
          *  Remove spaces
          */
-        transparent = FALSE;
-        in_string = FALSE;
+        transparent = false;
+        in_string = false;
 
         /*
          *  Keyword translation needs a second pass
@@ -1444,7 +1444,7 @@ long read_line( char *buffer, int *err )
                    || compare( q - 4, "DATA", 4 ) == 0
                    || compare( q - 3, "REM" , 3 ) == 0 ) )
             {
-                transparent = TRUE;
+                transparent = true;
                 continue;
             }
             /*
@@ -1492,8 +1492,8 @@ long read_line( char *buffer, int *err )
              */
             /* printf( "%s\n", temp ); */
 
-            transparent = FALSE;
-            in_string = FALSE;
+            transparent = false;
+            in_string = false;
 
             for ( p = temp, q = buffer; *p != '\0'; q++, p++ ) {
                 /*
@@ -1511,7 +1511,7 @@ long read_line( char *buffer, int *err )
                      || compare( p - 4, "DATA", 4 ) == 0
                      || compare( p - 3, "REM" , 3 ) == 0 )
                 {
-                    transparent = TRUE;
+                    transparent = true;
                     continue;
                 }
 
@@ -1533,7 +1533,7 @@ long read_line( char *buffer, int *err )
                         paren = *q == '(';
                         if ( paren && p[ 1 ] == '(' ) {
                             --q;
-                            paren = FALSE;
+                            paren = false;
                         }
                         break;
                     }
@@ -1542,7 +1542,7 @@ long read_line( char *buffer, int *err )
                     /*
                      *  Insert missing parenthesis before delimiter
                      */
-                    paren = FALSE;
+                    paren = false;
                     *q++ = ')';
                     *q = *p;
                 }
@@ -1716,8 +1716,8 @@ int encode700( long line_number, char *line, char *buffer )
     /*
      *  Encode the rest
      */
-    transparent = FALSE;
-    in_string = FALSE;
+    transparent = false;
+    in_string = false;
 
     while ( *line != '\0' ) {
 
@@ -1746,7 +1746,7 @@ int encode700( long line_number, char *line, char *buffer )
                 *buffer++ = 0xB8;
                 ++l;
                 ++line;
-                transparent = TRUE;
+                transparent = true;
                 continue;
             }
             if ( *line == '&' && toupper( line[ 1 ] ) == 'H' ) {
@@ -1783,7 +1783,7 @@ int encode700( long line_number, char *line, char *buffer )
                         /*
                          *  DATA or REM
                          */
-                        transparent = TRUE;
+                        transparent = true;
                     }
                     line += tl;
                     *buffer++ = tp->token;
@@ -1841,9 +1841,9 @@ int encode850_200( long line_number, char *line, char *buffer )
     /*
      *  Encode the rest
      */
-    transparent = FALSE;
-    in_string = FALSE;
-    binary = FALSE;
+    transparent = false;
+    in_string = false;
+    binary = false;
 
     while ( *line != '\0' ) {
 
@@ -1858,7 +1858,7 @@ int encode850_200( long line_number, char *line, char *buffer )
                 /*
                  *  Something other then list of line numbers
                  */
-                binary = FALSE;
+                binary = false;
             }
             if ( *line == ':' ) {
                 /*
@@ -1876,7 +1876,7 @@ int encode850_200( long line_number, char *line, char *buffer )
                 *buffer++ = 0x02;
                 ++l;
                 ++line;
-                transparent = TRUE;
+                transparent = true;
                 continue;
             }
             if ( *line == '&' && toupper( line[ 1 ] ) == 'H' ) {
@@ -1933,13 +1933,13 @@ int encode850_200( long line_number, char *line, char *buffer )
                         /*
                          *  DATA or REM
                          */
-                        transparent = TRUE;
+                        transparent = true;
                     }
                     if ( tp->prefix & 0x80 ) {
                         /*
                          *  Encode line numbers
                          */
-                        binary = TRUE;
+                        binary = true;
                     }
                     line += tl;
                     *buffer++ = tp->prefix & 0x0F;
@@ -2003,26 +2003,26 @@ int main( int argc, char *argv[] )
             baudrate = 1200;
         }
         if ( strncmp( *argv, "-2", 2 ) == 0 ) {
-            Fp200 = TRUE;
-            AsciiLargeBlocks = TRUE;
+            Fp200 = true;
+            AsciiLargeBlocks = true;
         }
         if ( strncmp( *argv, "-t", 2 ) == 0 ) {
             switch ( toupper( (*argv)[ 2 ] ) ) {
             case 'B':
-                AsciiLargeBlocks = TRUE;
+                AsciiLargeBlocks = true;
             case 'A':
                 Header.file_type = TYPE_ASCII;
                 break;
             case '7':
                 Header.file_type = TYPE_PROGRAM;
-                PbEscapes = TRUE;
+                PbEscapes = true;
                 break;
             case '8':
                 Header.file_type = TYPE_PROG850;
                 break;
             case '2':
                 Header.file_type = TYPE_PROG850;
-                Fp200 = TRUE;
+                Fp200 = true;
                 break;
             case 'T':
             case '\0':
@@ -2041,7 +2041,7 @@ int main( int argc, char *argv[] )
             if ( p != NULL ) {
                 DataLines = atoi( p + 1 );
                 if ( DataLines == 0 && p[ 1 ] == 'B' ) {
-                    AsciiLargeBlocks = TRUE;
+                    AsciiLargeBlocks = true;
                 }
             }
         }
@@ -2054,8 +2054,8 @@ int main( int argc, char *argv[] )
                 Utf8Mode = UTF8_PB; 
                 break;
             case '\0':
-                Uppercase = TRUE;
-                Lowercase = FALSE;
+                Uppercase = true;
+                Lowercase = false;
                 break;
             }
         }
@@ -2068,23 +2068,23 @@ int main( int argc, char *argv[] )
                 LogarithmMode = LOG_PB; 
                 break;
             case '\0':
-                Uppercase = FALSE;
-                Lowercase = TRUE;
+                Uppercase = false;
+                Lowercase = true;
                 break;
             }
         }
         if ( strncmp( *argv, "-e", 2 ) == 0 ) {
             switch ( toupper( (*argv)[ 2 ] ) ) {
             case 'F':
-                PbEscapes = FALSE; 
+                PbEscapes = false; 
                 break;
             case 'P':
-                PbEscapes = TRUE; 
+                PbEscapes = true; 
                 break;
             }
         }
         if ( strncmp( *argv, "-o", 2 ) == 0 ) {
-            Translate = TRUE;
+            Translate = true;
         }
         ++argv;
         --argc;
@@ -2092,7 +2092,7 @@ int main( int argc, char *argv[] )
     if ( Lowercase || baudrate != 300 || OutputMode == MODE_TEXT
          || AsciiLargeBlocks ) 
     {
-        JisBasic = TRUE;
+        JisBasic = true;
     }
     if ( Fp200 ) {
         baudrate = 300;
@@ -2388,13 +2388,13 @@ int main( int argc, char *argv[] )
                     break;
                 }
                 if ( Fp200 ) {
-                    err = output_ASCII( 0x0D, FALSE, FALSE );
+                    err = output_ASCII( 0x0D, false, false );
                     if ( err == 0 ) {
-                        err = output_ASCII( 0x0A, TRUE, TRUE );
+                        err = output_ASCII( 0x0A, true, true );
                     }
                 }
                 else {
-                    err = output_ASCII( 0x0D, TRUE, TRUE );
+                    err = output_ASCII( 0x0D, true, true );
                 }
             }
             else {
@@ -2402,18 +2402,18 @@ int main( int argc, char *argv[] )
                  *  Output the line
                  */
                 while ( *p != '\0' && err == 0 ) {
-                    err = output_ASCII( *p++, FALSE, FALSE );
+                    err = output_ASCII( *p++, false, false );
                 }
                 if ( err == 0 ) {
                     /*
                      *  Terminate line, flush if not creating large blocks
                      */
-                    err = output_ASCII( 0x0D, !AsciiLargeBlocks, FALSE );
+                    err = output_ASCII( 0x0D, !AsciiLargeBlocks, false );
                     if ( err == 0 && Fp200 ) {
                         /*
                          *  FP-200 terminates lines with CR+LF
                          */
-                        err = output_ASCII( 0x0A, FALSE, FALSE );
+                        err = output_ASCII( 0x0A, false, false );
                     }
                 }
                 ++linecount;

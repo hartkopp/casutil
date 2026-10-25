@@ -44,7 +44,7 @@ zip:
 $(SRC)/wave.o:	$(SRC)/wave.c $(SRC)/wave.h
 	$(CC) $(CCOPTS)	-c $<
 
-$(src_files): $(SRC)/%: $(SRC)/%.c $(SRC)/wave.o $(SRC)/wave.h $(SRC)/bool.h
+$(src_files): $(SRC)/%: $(SRC)/%.c $(SRC)/wave.o $(SRC)/wave.h
 	$(CC) $(CCOPTS)	$< $(SRC)/wave.o
 
 $(MD100)/md100:	$(MD100)/md100.c $(MD100)/libdisk.c

@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 /*
@@ -673,17 +673,17 @@ struct _utf8 Utf8_PB[] =
 /*
  *  Flag for binary mode 
  */
-bool BinMode = TRUE;
+bool BinMode = true;
 
 /*
  *  Flag set if FX-850P or PB-1000
  */
-bool Fx850P = FALSE;
+bool Fx850P = false;
 
 /*
  *  Flag set if FP-200
  */
-bool Fp200 = FALSE;
+bool Fp200 = false;
 
 /*
  *  Escape mode
@@ -699,12 +699,12 @@ enum { LOG_NONE, LOG_FX, LOG_PB } LogarithmMode = LOG_NONE;
 /*
  *  Suppress Header
  */
-bool NoHeader = FALSE;
+bool NoHeader = false;
 
 /*
  *  File is from MD100 disk drive
  */
-bool DiskMode = FALSE;
+bool DiskMode = false;
 
 /*
  *  Header bytes
@@ -758,14 +758,14 @@ struct _disk_header {
 void printHeader( void )
 {
     int i;
-    static bool first = TRUE;
+    static bool first = true;
 
     if ( NoHeader ) {
         return;
     }
 
     if ( first ) {
-        first = FALSE;
+        first = false;
     }
     else {
         putchar( '\n' );
@@ -931,11 +931,11 @@ void printDiskHeader( void )
  */
 void casioprint( int c, bool is_data )
 {
-    static bool insert_space = FALSE;
-    static bool pending_colon = FALSE;
+    static bool insert_space = false;
+    static bool pending_colon = false;
     static int last = 0;
-    static bool quoted = FALSE;
-    static bool quoted_until_eol = FALSE;
+    static bool quoted = false;
+    static bool quoted_until_eol = false;
     char *p = NULL;
     char buffer[] = "\\XX\\XX";
     struct _escapes *ep;
@@ -945,7 +945,7 @@ void casioprint( int c, bool is_data )
         /*
          *  No token detection
          */
-        quoted = quoted_until_eol = TRUE;
+        quoted = quoted_until_eol = true;
     }
 
     if ( Fx850P || Fp200 ) {
@@ -990,13 +990,13 @@ void casioprint( int c, bool is_data )
                 break;
 
             case 0x01:
-                pending_colon = TRUE;
+                pending_colon = true;
                 c = -1;
                 break;
 
             case 0x02:
                 p = "'";
-                quoted_until_eol = TRUE;
+                quoted_until_eol = true;
                 break;
 
             case 0x03:
@@ -1077,7 +1077,7 @@ void casioprint( int c, bool is_data )
                         /*
                          *  REM or DATA
                          */
-                        quoted = quoted_until_eol = TRUE;
+                        quoted = quoted_until_eol = true;
                     }
                 }
                 else {
@@ -1105,10 +1105,10 @@ void casioprint( int c, bool is_data )
              *  print the postponed colon
              */
             putchar( ':' );
-            pending_colon = FALSE;
+            pending_colon = false;
         }
         putchar( c );
-        insert_space = FALSE;
+        insert_space = false;
         last = ' ';
     }
     else {
@@ -1208,7 +1208,7 @@ void casioprint( int c, bool is_data )
                  */
                 putchar( ':' );
             }
-            pending_colon = FALSE;
+            pending_colon = false;
         }
 
         /*
@@ -1222,12 +1222,12 @@ void casioprint( int c, bool is_data )
             
             case '"':
                 quoted = !quoted || quoted_until_eol;
-                insert_space = FALSE;
+                insert_space = false;
                 break;
 
             case '\n':
-                quoted = quoted_until_eol = FALSE;
-                insert_space = FALSE;
+                quoted = quoted_until_eol = false;
+                insert_space = false;
                 break;
             }
 
@@ -1236,7 +1236,7 @@ void casioprint( int c, bool is_data )
                  *  Print char as is, no further translation
                  */
                 putchar( c );
-                insert_space = FALSE;
+                insert_space = false;
             }
             else {
                 /*
@@ -1249,7 +1249,7 @@ void casioprint( int c, bool is_data )
                     /*
                      *  Token ends with a space
                      */
-                    insert_space = TRUE;
+                    insert_space = true;
                 }
                 else {
                     /*
@@ -1259,7 +1259,7 @@ void casioprint( int c, bool is_data )
                         putchar( ' ' );
                     }
                     putchar( c );
-                    insert_space = FALSE;
+                    insert_space = false;
                 }
             }
             last = c;
@@ -1303,11 +1303,11 @@ int list( int c )
     static int progtab_length = 0;
     static int program_length = 0;
 
-    static bool leader_expected = TRUE;
-    static bool dataseg_expected = FALSE;
-    static bool textline_expected = FALSE;
-    static bool progtab_expected = FALSE;
-    static bool last_segment = FALSE;
+    static bool leader_expected = true;
+    static bool dataseg_expected = false;
+    static bool textline_expected = false;
+    static bool progtab_expected = false;
+    static bool last_segment = false;
 
     static int progtab[ 10 ];
 
@@ -1337,7 +1337,7 @@ int list( int c )
                 /*
                  *  Leader contains at least 12 idle strings
                  */
-                leader_expected = FALSE;
+                leader_expected = false;
             }
             data_counter = 0;
             return 0;
@@ -1386,7 +1386,7 @@ int list( int c )
                      *  End of header, mimic data segment
                      */
                     printDiskHeader();
-                    leader_expected = FALSE;
+                    leader_expected = false;
                     data_counter = 3;
                     segment_id = 'D';
                     if ( DiskHeader.file_type == DTYPE_B ) {
@@ -1399,7 +1399,7 @@ int list( int c )
                                        - DiskHeader.file_top[ 1 ] * 256
                                        + 1;
                         Header.file_type = TYPE_PROG850;
-                        Fx850P = TRUE;
+                        Fx850P = true;
                     } 
                     else if ( DiskHeader.file_type == DTYPE_M ) {
                         /*
@@ -1456,7 +1456,7 @@ int list( int c )
                  *  Valid header byte encountered
                  */
                 data_counter = 0;
-                leader_expected = FALSE;
+                leader_expected = false;
 #if DEBUG
                 printf( "Segment: %c\n", c );
 #endif
@@ -1527,7 +1527,7 @@ int list( int c )
          *  Skip checksums, termination chars and the like
          */
         if ( --ignore_counter == 0 ) {
-            leader_expected = TRUE;
+            leader_expected = true;
             skipped = 5;
         }
         return 0;
@@ -1547,7 +1547,7 @@ int list( int c )
 #endif
             length_counter = 2;
             transparent_counter = 0;
-            textline_expected = FALSE;
+            textline_expected = false;
             return 0;
         }
 
@@ -1578,7 +1578,7 @@ int list( int c )
                  *  Skip checksum byte(s)
                  */
                 if ( last_segment ) {
-                    dataseg_expected = FALSE;
+                    dataseg_expected = false;
                 }
                 ignore_counter = Fp200 ? 2 : 1;
             }
@@ -1588,7 +1588,7 @@ int list( int c )
                  *  If EscapeMode  is set, translate extended codes
                  */
                 if ( EscapeMode ) {
-                    casioprint( c, TRUE ); // force data mode
+                    casioprint( c, true ); // force data mode
                 }
                 else {
                     putchar( c );
@@ -1607,9 +1607,9 @@ int list( int c )
                  */
                 return 9;
             }
-            last_segment = FALSE;
+            last_segment = false;
             ptlength_counter = 2;
-            progtab_expected  = FALSE;
+            progtab_expected  = false;
             return 0;
         }
 
@@ -1661,7 +1661,7 @@ int list( int c )
             /*
              *  End of segment marker
              */
-            leader_expected = TRUE;
+            leader_expected = true;
             skipped = 5;
             dataseg_expected = ( c == 0xF1 );
             return 0;
@@ -1692,7 +1692,7 @@ int list( int c )
                      */
                     return 7;
                 }
-                textline_expected = TRUE;
+                textline_expected = true;
                 return 0;
 
             case TYPE_ALL850:
@@ -1700,7 +1700,7 @@ int list( int c )
                     /*
                      *  Program table for 10 Programs follows
                      */
-                    progtab_expected = TRUE;
+                    progtab_expected = true;
                     return 0;
                 }
                 if ( c != 0x10 ) {
@@ -1791,7 +1791,7 @@ int list( int c )
                  */
                 line_counter = 0;
             }
-            casioprint( c, FALSE );
+            casioprint( c, false );
         }
         else {
             /*
@@ -1840,7 +1840,7 @@ int list( int c )
                          *  End of segment: skip checksum
                          */
                         if ( last_segment ) {
-                            dataseg_expected = FALSE;
+                            dataseg_expected = false;
                         }
                         ignore_counter = Fp200 ? 2 : 1;
                         printf( "\n END\n" );
@@ -1860,7 +1860,7 @@ int list( int c )
                      *  End of segment: skip checksum
                      */
                     if ( last_segment ) {
-                        dataseg_expected = FALSE;
+                        dataseg_expected = false;
                     }
                     ignore_counter = Fp200 ? 2 : 1;
                     printf( "\n" );
@@ -1885,7 +1885,7 @@ int list( int c )
                      *  Skip rest of segment
                      */
                     if ( last_segment ) {
-                        dataseg_expected = FALSE;
+                        dataseg_expected = false;
                     }
                     line_counter = 0;
                     ignore_counter = program_length; 
@@ -1934,7 +1934,7 @@ int list( int c )
             /*
              *  Print remaining bytes of the data segment
              */
-            casioprint( c, FALSE );
+            casioprint( c, false );
         }
         return 0;
     }
@@ -1953,7 +1953,7 @@ int list( int c )
             Fx850P = Header.file_type == TYPE_PROG850
                   || Header.file_type == TYPE_ALL850;
             if ( Fp200 ) {
-                Fx850P = FALSE;
+                Fx850P = false;
             }
             if ( !Fx850P && EscapeMode == ESC_FX ) {
                 /*
@@ -1962,7 +1962,7 @@ int list( int c )
                 EscapeMode = ESC_PB;
             }
             ignore_counter = Fp200 ? 2 : 1;
-            dataseg_expected = TRUE;
+            dataseg_expected = true;
             if ( Header.file_type == TYPE_DATA
               || Header.file_type == TYPE_ASCII )
             {
@@ -1988,7 +1988,7 @@ int main( int argc, char *argv[] )
     KCS_FILE *wfp = NULL;
     int skip = 0;
     enum { NO, SLOW, FAST, HIGH } wavemode = NO;
-    int ignore = FALSE;
+    int ignore = false;
 
     ++argv;
     --argc;
@@ -1996,29 +1996,29 @@ int main( int argc, char *argv[] )
     while ( argc > 1 && **argv == '-' ) {
 
         if ( strncmp( *argv, "-2", 2 ) == 0 ) {
-            Fp200 = TRUE;
+            Fp200 = true;
         }
         if ( strncmp( *argv, "-b", 2 ) == 0 ) {
-            BinMode = TRUE;
+            BinMode = true;
             skip = atoi( *argv + 2 );
         }
         if ( strncmp( *argv, "-d", 2 ) == 0 ) {
-            BinMode = TRUE;
-            DiskMode = TRUE;
+            BinMode = true;
+            DiskMode = true;
         }
         if ( strncmp( *argv, "-a", 2 ) == 0 ) {
-            BinMode = FALSE;
+            BinMode = false;
             skip = atoi( *argv + 2 );
         }
         if ( strncmp( *argv, "-i", 2 ) == 0 ) {
-            ignore = TRUE;
+            ignore = true;
         }
         if ( strncmp( *argv, "-n", 2 ) == 0 ) {
-            NoHeader = TRUE;
+            NoHeader = true;
         }
 
         if ( strncmp( *argv, "-w", 2 ) == 0 ) {
-            BinMode = FALSE;
+            BinMode = false;
             wavemode = SLOW;
             if ( toupper( (*argv)[ 2 ] ) == 'F' ) {
                 wavemode = FAST;

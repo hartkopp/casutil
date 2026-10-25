@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 #define LEAD_IN_TIME 6        /* tens of a second */

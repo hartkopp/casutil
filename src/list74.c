@@ -17,7 +17,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <errno.h>
-#include "bool.h"
+#include <stdbool.h>
 #include "wave.h"
 
 /*
@@ -448,7 +448,7 @@ KCS_FILE *WaveFile = NULL;
 /*
  *  Binary mode
  */
-bool BinMode = TRUE;
+bool BinMode = true;
 
 /*
  *  Escape mode
@@ -494,7 +494,7 @@ unsigned char *Buffer = NULL;
 /*
  *  Set by readBuffer after last block is read
  */
-bool LastBlock = FALSE;
+bool LastBlock = false;
 
 
 /*
@@ -529,13 +529,13 @@ int readBlock( int length )
 {
     int c, count;
     unsigned char check = 0;
-    bool retry = FALSE;
+    bool retry = false;
 
 #if _DEBUG
     printf( "readBlock(%d):", length );
 #endif
     if ( length < 0 ) {
-        retry = TRUE;
+        retry = true;
         length = -length;
     }
     
@@ -812,14 +812,14 @@ void tiprintc( unsigned char c )
  */
 void tiprint( const char *buffer, int length )
 {
-    static bool space_pending = FALSE;
+    static bool space_pending = false;
     static char last = '\0';
-    bool handle_spaces = FALSE;
+    bool handle_spaces = false;
     char c;
 
     if ( length < 0 ) {
         length = (int) strlen( buffer );
-        handle_spaces = TRUE;
+        handle_spaces = true;
     }
     while ( length-- ) {
         c = *buffer++;
@@ -833,7 +833,7 @@ void tiprint( const char *buffer, int length )
             if ( isalnum( c ) ) {
                 tiprintc( ' ' );
             }
-            space_pending = FALSE;
+            space_pending = false;
             last = ' ';
         }
         if ( handle_spaces && c == ' ' ) {
@@ -841,7 +841,7 @@ void tiprint( const char *buffer, int length )
             continue;
         }
         else {
-            space_pending = FALSE;
+            space_pending = false;
         }
         last = c;
         tiprintc( (unsigned char) c );
@@ -1200,7 +1200,7 @@ int process( unsigned char *buffer, int length )
 int main( int argc, char *argv[] )
 {
     int err;
-    bool is_pgm_file = FALSE;
+    bool is_pgm_file = false;
     FILE *raw = NULL;
     char *rawfile = NULL;
     unsigned int length;
@@ -1212,10 +1212,10 @@ int main( int argc, char *argv[] )
     while ( argc > 1 && **argv == '-' ) {
 
         if ( strncmp( *argv, "-b", 2 ) == 0 ) {
-            BinMode = TRUE;
+            BinMode = true;
         }
         if ( strncmp( *argv, "-w", 2 ) == 0 ) {
-            BinMode = FALSE;
+            BinMode = false;
         }
         if ( strncmp( *argv, "-r", 2 ) == 0 ) {
             rawfile = *argv + 2;
@@ -1287,7 +1287,7 @@ int main( int argc, char *argv[] )
          *  Check if the file starts with 80 03
          */
         if ( fgetc( InFile ) == 0x80 && fgetc( InFile ) == 0x03 ) {
-            is_pgm_file = TRUE;
+            is_pgm_file = true;
             rawfile = NULL;
         }
         fseek( InFile, 0, SEEK_SET );
