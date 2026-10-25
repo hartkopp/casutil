@@ -25,6 +25,7 @@ Windows CE do not apply anymore.
 | list8000 | List programs, registers, graphics and text of the fx-8000G graphics calculators, export to FA-121 (CAS) and FA-122..124 (CAT) |
 | listX07  | List a binary or WAV file as BASIC text (Canon X-07) |
 | list74   | List a binary, PGM or WAV file as BASIC text (TI-74) |
+| list602  | List programs and data registers of a binary or WAV file (FX-601P, FX-602P) |
 | wave730  | Create a WAV file from a binary file (PB-100 series, also FX-702P) |
 | wave850  | Create a WAV file from a binary file (PB-700 and later, FP-200) |
 | waveX07  | Create a WAV file from a binary file (Canon X-07) |
@@ -84,6 +85,10 @@ BASIC comparison sheet ([doc/basic-compare.html](doc/basic-compare.html)).
   or USB interface. Tools: `list850`, `wave850`, `bas850`.
 - **FP-200**: 300 bit/s, a different binary encoding than the FX-850P.
   Use option `-2` with `list850`, `wave850` and `bas850`.
+- **FX-601P, FX-602P**: keystroke programmable calculators, 300 bit/s
+  through the FA-1 or FA-2. Programs are stored as one byte per step.
+  Files saved by the FX-502P use the same format with a file number
+  instead of a name. Tool: `list602`.
 - **MD-100 floppy drive** with the PB-1000 and the PB-2000C: `md100`.
 - **Casio fx-8000G** graphics calculator with the FA-80 interface, 2400
   bit/s: `list8000`.
@@ -172,6 +177,13 @@ standard output.
   files (`-g`) and exports CAS files for FA-121 (`-cas`) or CAT files for
   FA-122..124 (`-cat`).
 - `list74`: `-r` writes a PGM file for the TI PC interface.
+- `list602`: lists program, data and "all" files of the FX-601P/FX-602P
+  with file name or number, password, program steps and the memory
+  registers. Binary files are also accepted in the format of the
+  FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
+  and `√` in UTF-8, `-x` adds the hex codes of all steps. Codes without
+  known meaning, e.g. from synthetic programming, are shown as `[XX]`,
+  unknown alpha characters as `\XX`.
 
 Example for an fx-8000G recording:
 
@@ -308,6 +320,8 @@ documentation.
 - Original documentation: <https://www.mvcsys.de/doc/casioutil.html>
 - Piotr Piatek, who inspired much of this work and documented the Casio
   hardware, interfaces and the MD-100: <https://www.pisi.com.pl/piotr433/>
+- FX-602P and FX-603P token codes, file format and simulator by Martin
+  Krischik: <https://fx-602p.krischik.com>
 - Ledudu's site about Casio calculators and pocket computers:
   <http://www.ledudu.com/pockets.asp>
 - rskey.org about programmable calculators: <http://www.rskey.org>
