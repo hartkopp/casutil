@@ -15,7 +15,7 @@ programs:=	wav2raw wav2wav			\
 		wave730 wave850 waveX07		\
 		list702 list730 list850 list8000	\
 		listX07 list74 list602		\
-		bas702 bas730 bas850 basX07
+		wave602 bas702 bas730 bas850 basX07
 src_files:=	$(addprefix $(SRC)/,$(programs))
 files:=		$(src_files) $(MD100)/md100
 scripts:=	$(wildcard $(MD100)/*.sh)
