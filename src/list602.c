@@ -204,21 +204,16 @@ const NAME Alpha[ 256 ] = {
 };
 
 /*
- *  Known file types, see Martin Krischik's description
+ *  File types, second header byte
+ *  The first header byte holds the number of program steps divided by 8,
+ *  which is selected together with the number of registers by MODE . 20
+ *  to MODE . 80, e.g. 0x40 for 512 steps and 22 registers (MODE . 20) or
+ *  0x21 for 264 steps and 56 registers M00..M50, MF..M4F (MODE . 51).
+ *  Display data files use 0x41 (numeric) or 0x42 (alpha) instead.
  */
-const struct _file_type {
-    unsigned char byte1, byte2;
-    const char *name;
-} FileTypes[] = {
-    { 0x04, 0x0E, "Program" },
-    { 0x40, 0x0E, "Program" },
-    { 0x40, 0x40, "Data (memory registers)" },
-    { 0x41, 0x40, "Display data (numeric)" },
-    { 0x42, 0x40, "Display data (alpha)" },
-    { 0x44, 0x4E, "All (programs and data)" },
-    { 0x40, 0x4E, "All (programs and data)" },
-    { 0x00, 0x00, NULL }
-};
+#define TYPE_PROGRAM 0x0E
+#define TYPE_ALL     0x1F
+#define TYPE_DATA    0x40
 
 
 /*
@@ -334,6 +329,25 @@ bool isRegister( const int *p )
 
 
 /*
+ *  Check for a data register with a valid exponent but non decimal
+ *  digits in the mantissa, e.g. created by synthetic programming
+ */
+bool isSyntheticRegister( const int *p )
+{
+    int i;
+
+    for ( i = 0; i < REG_LEN; ++i ) {
+        if ( p[ i ] < 0 ) {
+            return false;
+        }
+    }
+    return ( p[ 0 ] & 0x0F ) <= 9 && ( p[ 0 ] >> 4 ) <= 9
+        && ( p[ 1 ] & 0x0F ) <= 9 && ( p[ 1 ] >> 4 ) == 0
+        && ( p[ 2 ] & 0x0F ) == 0 && ( p[ 7 ] >> 4 ) <= 1;
+}
+
+
+/*
  *  Find the end of the valid data registers starting at Data[ start ]
  *  Returns start if there is no valid register
  */
@@ -385,8 +399,11 @@ bool containsLabels( int start, int end )
 }
 
 
+const char HexDigits[] = "0123456789ABCDEF";
+
 /*
  *  Print a BCD coded number
+ *  Non decimal digits of synthetic numbers are shown as hex digits.
  *
  *  Byte 0: exponent digits 2 and 3
  *  Byte 1: exponent digit 1 (low nibble)
@@ -402,12 +419,12 @@ void printNumber( const int *p )
 
     exponent = ( p[ 1 ] & 0x0F ) * 100 + ( p[ 0 ] >> 4 ) * 10
              + ( p[ 0 ] & 0x0F ) - 100;
-    digits[ 0 ] = '0' + ( p[ 7 ] & 0x0F );
+    digits[ 0 ] = HexDigits[ p[ 7 ] & 0x0F ];
     for ( i = 1; i < 9; ++i ) {
         int b = p[ 6 - ( i - 1 ) / 2 ];
-        digits[ i ] = '0' + ( i % 2 ? b >> 4 : b & 0x0F );
+        digits[ i ] = HexDigits[ i % 2 ? b >> 4 : b & 0x0F ];
     }
-    digits[ 9 ] = '0' + ( p[ 2 ] >> 4 );
+    digits[ 9 ] = HexDigits[ p[ 2 ] >> 4 ];
     digits[ 10 ] = '\0';
 
     /*
@@ -467,10 +484,23 @@ void listRegisters( int start, int end )
         if ( isRegister( Data + i ) ) {
             printNumber( Data + i );
         }
-        else {
-            printf( "invalid" );
+        else if ( isSyntheticRegister( Data + i ) ) {
+            printNumber( Data + i );
+            printf( "  (synthetic)" );
         }
-        if ( ShowHex ) {
+        else {
+            /*
+             *  Not a number, e.g. a register that was assigned with
+             *  MODE . but never cleared
+             */
+            int j;
+            printf( "[" );
+            for ( j = 0; j < REG_LEN; ++j ) {
+                printf( j ? " %02X" : "%02X", Data[ i + j ] );
+            }
+            printf( "]" );
+        }
+        if ( ShowHex && ( isRegister( Data + i ) || isSyntheticRegister( Data + i ) ) ) {
             int j;
             printf( "  [" );
             for ( j = 0; j < REG_LEN; ++j ) {
@@ -517,6 +547,15 @@ void listProgram( int start, int end )
     int i = start;
     int step = 0;
     bool first = true;
+
+    if ( start < end && Data[ start ] > 0x09 ) {
+        /*
+         *  Steps outside of any program, e.g. in front of P0 in the
+         *  program area of an "all" file
+         */
+        printf( "No program\n" );
+        first = false;
+    }
 
     while ( i < end ) {
         int c = Data[ i ];
@@ -721,6 +760,55 @@ int findFooter( int start, int end )
 
 
 /*
+ *  Check for a footer (8 bytes 0xFF) at Data[ pos ]
+ */
+bool isFooter( int pos, int end )
+{
+    int i;
+
+    if ( pos + FOOTER_LEN > end ) {
+        return false;
+    }
+    for ( i = pos; i < pos + FOOTER_LEN; ++i ) {
+        if ( Data[ i ] != 0xFF ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+/*
+ *  Find the data registers starting at Data[ data ]
+ *  count is the number of registers from the memory partition or 0.
+ *  Registers may contain 0xFF only, therefore the footer is expected
+ *  behind count registers. Otherwise the first footer at a register
+ *  boundary terminates the data.
+ *  Returns the end of the registers, *after is set behind the footer.
+ */
+int findRegisters( int data, int count, int end, int *after, bool *footer )
+{
+    int i;
+
+    if ( count > 0 && isFooter( data + count * REG_LEN, end ) ) {
+        *after = data + count * REG_LEN + FOOTER_LEN;
+        *footer = true;
+        return data + count * REG_LEN;
+    }
+    for ( i = data; i + REG_LEN <= end; i += REG_LEN ) {
+        if ( isFooter( i, end ) ) {
+            *after = i + FOOTER_LEN;
+            *footer = true;
+            return i;
+        }
+    }
+    *after = end;
+    *footer = false;
+    return i;
+}
+
+
+/*
  *  List a single file starting with the header at Data[ start ]
  *  header_len is less than HEADER_LEN if a part of the header is missing
  *  in a recording.
@@ -728,12 +816,13 @@ int findFooter( int start, int end )
  */
 int listFile( int start, int header_len, int end )
 {
-    const struct _file_type *ft;
     int h[ HEADER_LEN ];
     int body = start + header_len;
     int footer = findFooter( body, end );
     int after = footer < end ? footer + FOOTER_LEN : end;
+    int prog_end = footer;
     int data = after, data_end = after;
+    int steps = 0, registers = 0;
     bool data_footer = true;
     bool display_alpha = false;
     const char *content;
@@ -742,19 +831,28 @@ int listFile( int start, int header_len, int end )
     for ( i = 0; i < HEADER_LEN; ++i ) {
         h[ i ] = i < header_len ? Data[ start + i ] : 0xFF;
     }
-    for ( ft = FileTypes; ft->name != NULL; ++ft ) {
-        if ( ft->byte1 == h[ 0 ] && ft->byte2 == h[ 1 ] ) {
-            break;
-        }
+
+    /*
+     *  Memory partition: steps / 8 in the first header byte,
+     *  20..80 registers M00..M79 and one register MF..M7F for each
+     *  complete group of ten
+     */
+    if ( h[ 0 ] >= 0x04 && h[ 0 ] <= 0x40 ) {
+        int numbered;
+
+        steps = h[ 0 ] * 8;
+        numbered = 20 + ( 512 - steps ) / 8;
+        registers = numbered + numbered / 10;
     }
 
-    if ( h[ 1 ] == 0x40 && h[ 0 ] == 0x41 ) {
+    if ( h[ 1 ] == TYPE_DATA && h[ 0 ] == 0x41 ) {
         /*
          *  Display data (numeric), the format is a guess
          */
-        content = ft->name;
+        content = "Display data (numeric)";
+        steps = 0;
     }
-    else if ( h[ 1 ] == 0x40 && ( h[ 0 ] == 0x42
+    else if ( h[ 1 ] == TYPE_DATA && ( h[ 0 ] == 0x42
               || ( registerEnd( body, footer ) != footer
                    && isAlphaText( body, footer ) ) ) )
     {
@@ -763,21 +861,33 @@ int listFile( int start, int header_len, int end )
          */
         content = "Display data (alpha)";
         display_alpha = true;
+        steps = 0;
     }
-    else if ( h[ 1 ] != 0x0E && footer > body
-              && registerEnd( body, footer ) == footer )
+    else if ( h[ 1 ] == TYPE_ALL && steps > 0 ) {
+        /*
+         *  The whole program area, unused steps filled with 0xFF,
+         *  a separating 0xFF and all registers
+         */
+        content = "All (programs and data)";
+        prog_end = body + steps < end ? body + steps : end;
+        data = prog_end < end && Data[ prog_end ] == 0xFF ? prog_end + 1 : prog_end;
+        data_end = findRegisters( data, registers, end, &after, &data_footer );
+    }
+    else if ( h[ 1 ] != TYPE_PROGRAM && footer > body
+              && ( isRegister( Data + body ) || isSyntheticRegister( Data + body ) ) )
     {
         /*
          *  Data registers only
          */
         content = "Data";
         data = body;
-        data_end = footer;
-        body = footer;
+        prog_end = body;
+        data_end = findRegisters( data, registers, end, &after, &data_footer );
     }
     else {
         /*
-         *  Program, optionally followed by data registers
+         *  Program, the simulator by Martin Krischik adds the registers
+         *  of an "all" file behind the footer of the program
          */
         int footer2 = findFooter( after, end );
 
@@ -786,13 +896,19 @@ int listFile( int start, int header_len, int end )
             after = footer2 < end ? footer2 + FOOTER_LEN : end;
             data_footer = footer2 < end;
         }
-        content = data_end > data ? "All (programs and data)"
-                : ft->name != NULL && ft->byte2 == 0x0E ? ft->name
-                : "Program";
+        content = data_end > data ? "All (programs and data)" : "Program";
+        if ( h[ 1 ] == TYPE_DATA ) {
+            /*
+             *  The simulator writes "all" files with type 40 40,
+             *  the memory partition is unknown
+             */
+            steps = 0;
+        }
     }
 
     printf( "%s file (type %02X %02X%s), ", content, h[ 0 ], h[ 1 ],
-            ft->name == NULL ? ", unknown" : "" );
+            h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA
+            ? ", unknown" : "" );
     if ( header_len < HEADER_LEN ) {
         printf( "header incomplete:" );
         for ( i = 0; i < header_len; ++i ) {
@@ -802,9 +918,12 @@ int listFile( int start, int header_len, int end )
     else {
         printName( h );
     }
+    if ( steps > 0 ) {
+        printf( ", %d steps, %d registers", steps, registers );
+    }
     printf( "\n\n" );
 
-    if ( h[ 1 ] == 0x40 && h[ 0 ] == 0x41 ) {
+    if ( h[ 1 ] == TYPE_DATA && h[ 0 ] == 0x41 ) {
         if ( isRegister( Data + body ) ) {
             printf( "Display = " );
             printNumber( Data + body );
@@ -812,8 +931,6 @@ int listFile( int start, int header_len, int end )
         }
     }
     else if ( display_alpha ) {
-        int i;
-
         printf( "Display = \"" );
         for ( i = body; i < footer; ++i ) {
             printAlpha( Data[ i ], 0 );
@@ -821,17 +938,22 @@ int listFile( int start, int header_len, int end )
         printf( "\"\n" );
     }
     else {
-        if ( body < footer ) {
-            listProgram( body, footer );
+        /*
+         *  The program ends with the first 0xFF
+         */
+        for ( i = body; i < prog_end && Data[ i ] != 0xFF; ++i )
+            ;
+        if ( body < i ) {
+            listProgram( body, i );
         }
         if ( data_end > data ) {
-            if ( body < footer ) {
+            if ( body < i ) {
                 printf( "\nData\n\n" );
             }
             listRegisters( data, data_end );
         }
     }
-    if ( footer == end ) {
+    if ( prog_end == end ) {
         printf( "\nEnd of file missing\n" );
     }
     else if ( !data_footer ) {
