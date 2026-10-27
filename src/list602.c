@@ -674,11 +674,11 @@ void printName( const int *h )
     c[ 5 ] = ( h[ 5 ] << 4 & 0xF0 ) | ( h[ 2 ] & 0x0F );
 
     /*
-     *  Names are padded with blanks (0x7F)
+     *  Names are padded with 0x0F (FX-602P) or blanks (0x7F, simulator)
      */
-    for ( i = 0; i < 6 && c[ i ] == 0x7F; ++i )
+    for ( i = 0; i < 6 && ( c[ i ] == 0x0F || c[ i ] == 0x7F ); ++i )
         ;
-    for ( n = 6; n > i && c[ n - 1 ] == 0x7F; --n )
+    for ( n = 6; n > i && ( c[ n - 1 ] == 0x0F || c[ n - 1 ] == 0x7F ); --n )
         ;
     printf( "name \"" );
     for ( ; i < n; ++i ) {
