@@ -645,8 +645,8 @@ void listProgram( int start, int end )
  *  FX-502P file number: header[ 2 ] = last digit and 0xA,
  *                       header[ 3 ] = first and second digit,
  *                       header[ 4..7 ] = 0xFF
- *  FX-602P file name: 6 alpha characters, nibbles spread over the
- *                     bytes 2..7
+ *  FX-602P file name: 6 alpha characters without bit 7, nibbles spread
+ *                     over the bytes 2..7
  */
 void printName( const int *h )
 {
@@ -672,6 +672,16 @@ void printName( const int *h )
     c[ 3 ] = ( h[ 6 ] << 4 & 0xF0 ) | ( h[ 3 ] & 0x0F );
     c[ 4 ] = ( h[ 5 ] & 0xF0 ) | ( h[ 2 ] >> 4 );
     c[ 5 ] = ( h[ 5 ] << 4 & 0xF0 ) | ( h[ 2 ] & 0x0F );
+
+    /*
+     *  Bit 7 of the characters is not stored, lower case letters and
+     *  the codes 0xAA..0xAF appear as 0x10..0x2F
+     */
+    for ( i = 0; i < 6; ++i ) {
+        if ( c[ i ] >= 0x10 && c[ i ] <= 0x2F ) {
+            c[ i ] |= 0x80;
+        }
+    }
 
     /*
      *  Names are padded with 0x0F (FX-602P) or blanks (0x7F, simulator)
