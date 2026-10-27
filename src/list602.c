@@ -712,20 +712,26 @@ int findFooter( int start, int end )
 
 /*
  *  List a single file starting with the header at Data[ start ]
+ *  header_len is less than HEADER_LEN if a part of the header is missing
+ *  in a recording.
  *  Returns the position behind the file
  */
-int listFile( int start, int end )
+int listFile( int start, int header_len, int end )
 {
     const struct _file_type *ft;
-    int *h = Data + start;
-    int body = start + HEADER_LEN;
+    int h[ HEADER_LEN ];
+    int body = start + header_len;
     int footer = findFooter( body, end );
     int after = footer < end ? footer + FOOTER_LEN : end;
     int data = after, data_end = after;
     bool data_footer = true;
     bool display_alpha = false;
     const char *content;
+    int i;
 
+    for ( i = 0; i < HEADER_LEN; ++i ) {
+        h[ i ] = i < header_len ? Data[ start + i ] : 0xFF;
+    }
     for ( ft = FileTypes; ft->name != NULL; ++ft ) {
         if ( ft->byte1 == h[ 0 ] && ft->byte2 == h[ 1 ] ) {
             break;
@@ -777,7 +783,15 @@ int listFile( int start, int end )
 
     printf( "%s file (type %02X %02X%s), ", content, h[ 0 ], h[ 1 ],
             ft->name == NULL ? ", unknown" : "" );
-    printName( h );
+    if ( header_len < HEADER_LEN ) {
+        printf( "header incomplete:" );
+        for ( i = 0; i < header_len; ++i ) {
+            printf( " %02X", h[ i ] );
+        }
+    }
+    else {
+        printName( h );
+    }
     printf( "\n\n" );
 
     if ( h[ 1 ] == 0x40 && h[ 0 ] == 0x41 ) {
@@ -979,8 +993,18 @@ int main( int argc, char **argv )
     pos = starts[ 0 ];
     while ( true ) {
         int next;
+        int header_len = HEADER_LEN;
 
-        pos = listFile( pos, Count );
+        /*
+         *  A lead-in within the header indicates a gap in the recording
+         */
+        while ( f < files && starts[ f ] <= pos ) {
+            ++f;
+        }
+        if ( f < files && starts[ f ] < pos + HEADER_LEN ) {
+            header_len = starts[ f ] - pos;
+        }
+        pos = listFile( pos, header_len, Count );
         while ( f < files && starts[ f ] < pos ) {
             ++f;
         }
