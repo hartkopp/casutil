@@ -416,11 +416,27 @@ long readSample( WFILE *file )
         shift = 24;
     }
     else {
+        /*
+         *  Samples with more than 8 bits are signed
+         */
+        switch ( fmt->blockAlign / fmt->channels ) {
+        case 2:
+            value = (int16_t) value;
+            break;
+        case 3:
+            if ( value & 0x800000L ) {
+                value -= 0x1000000L;
+            }
+            break;
+        case 4:
+            value = (int32_t) value;
+            break;
+        }
         bias = 0;
         shift = ( 4 - ( fmt->bitsPerSample + 7 ) / 8 ) * 8;
     }
 
-    result = ( value - bias ) << shift;
+    result = ( value - bias ) * ( 1L << shift );
 #if _DEBUG_x
     printf( "[%d->%d]", value, result );
 #endif
