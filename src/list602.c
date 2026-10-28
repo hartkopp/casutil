@@ -310,6 +310,16 @@ void printAlpha( int code, int offset )
 
 
 /*
+ *  Check the sign digit in byte 1 of a data register:
+ *  hundreds digit of the biased exponent (0 or 1), plus 5 if negative
+ */
+bool isSignDigit( int digit )
+{
+    return digit == 0 || digit == 1 || digit == 5 || digit == 6;
+}
+
+
+/*
  *  Check for a valid BCD coded data register
  */
 bool isRegister( const int *p )
@@ -324,7 +334,8 @@ bool isRegister( const int *p )
     /*
      *  Unused nibbles and sign
      */
-    return ( p[ 1 ] >> 4 ) == 0 && ( p[ 2 ] & 0x0F ) == 0 && ( p[ 7 ] >> 4 ) <= 1;
+    return ( p[ 1 ] >> 4 ) == 0 && isSignDigit( p[ 1 ] )
+        && ( p[ 2 ] & 0x0F ) == 0 && ( p[ 7 ] >> 4 ) == 0;
 }
 
 
@@ -342,8 +353,8 @@ bool isSyntheticRegister( const int *p )
         }
     }
     return ( p[ 0 ] & 0x0F ) <= 9 && ( p[ 0 ] >> 4 ) <= 9
-        && ( p[ 1 ] & 0x0F ) <= 9 && ( p[ 1 ] >> 4 ) == 0
-        && ( p[ 2 ] & 0x0F ) == 0 && ( p[ 7 ] >> 4 ) <= 1;
+        && ( p[ 1 ] >> 4 ) == 0 && isSignDigit( p[ 1 ] )
+        && ( p[ 2 ] & 0x0F ) == 0 && ( p[ 7 ] >> 4 ) == 0;
 }
 
 
@@ -406,18 +417,20 @@ const char HexDigits[] = "0123456789ABCDEF";
  *  Non decimal digits of synthetic numbers are shown as hex digits.
  *
  *  Byte 0: exponent digits 2 and 3
- *  Byte 1: exponent digit 1 (low nibble)
+ *  Byte 1: exponent digit 1, plus 5 if the number is negative
  *  Byte 2: mantissa digit 10 (high nibble)
  *  Byte 3..6: mantissa digits 9..2
- *  Byte 7: sign (high nibble), mantissa digit 1 (low nibble)
- *  The exponent is biased by 100.
+ *  Byte 7: mantissa digit 1 (low nibble)
+ *  The exponent is biased by 100, e.g. -2.5 is 00 06 00 00 00 00 50 02
+ *  and 1.23456789E-45 is 55 00 00 89 67 45 23 01.
  */
 void printNumber( const int *p )
 {
     char digits[ 11 ];
+    bool negative = p[ 1 ] >= 5;
     int exponent, i, n;
 
-    exponent = ( p[ 1 ] & 0x0F ) * 100 + ( p[ 0 ] >> 4 ) * 10
+    exponent = p[ 1 ] % 5 * 100 + ( p[ 0 ] >> 4 ) * 10
              + ( p[ 0 ] & 0x0F ) - 100;
     digits[ 0 ] = HexDigits[ p[ 7 ] & 0x0F ];
     for ( i = 1; i < 9; ++i ) {
@@ -436,7 +449,7 @@ void printNumber( const int *p )
         printf( "0" );
         return;
     }
-    if ( p[ 7 ] >> 4 ) {
+    if ( negative ) {
         printf( "-" );
     }
     if ( exponent >= 0 && exponent < 10 ) {
