@@ -47,6 +47,8 @@ $(SRC)/wave.o:	$(SRC)/wave.c $(SRC)/wave.h
 $(src_files): $(SRC)/%: $(SRC)/%.c $(SRC)/wave.o $(SRC)/wave.h
 	$(CC) $(CCOPTS)	$< $(SRC)/wave.o
 
+$(SRC)/list602: $(SRC)/fx602.h
+
 $(MD100)/md100:	$(MD100)/md100.c
 	$(CC) $(CCOPTS)	$<
 
