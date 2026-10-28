@@ -6,10 +6,14 @@
  *  cassette interface. The binary file contains the 8 header bytes,
  *  the programs or registers and the footer, e.g. as created by
  *  "wav2raw -b" or by the FX-602P simulator by Martin Krischik.
+ *  Files of the FX-501P/FX-502P with their 2 header bytes are supported
+ *  as well, the format is detected from the header.
  *
  *  Options:
  *    -b<skip>   read BIN file (Default); skip <skip> garbage bytes
- *    -n<name>   set the file name in the header (up to 6 characters)
+ *    -n<name>   set the file name in the header (up to 6 characters,
+ *               FX-601P/FX-602P only)
+ *    -f<number> set the file number in the header (0..999, 0 for none)
  *    -l<time>   length of the lead-in in tens of a second (default 50)
  *
  *  See list602.c for the file format.
@@ -25,6 +29,12 @@
 #define NAME_LEN     6
 #define LEAD_IN_TIME 50       /* tens of a second, as the FX-602P */
 #define NAME_PADDING 0x0F     /* fills short names from the left */
+
+#define TYPE602_PROGRAM 0x0E  /* FX-602P file types, header byte 1 */
+#define TYPE602_ALL     0x1F
+#define TYPE602_DATA    0x40
+#define TYPE502_PROGRAM 0xB   /* FX-502P file types, high nibble of byte 1 */
+#define TYPE502_DATA    0xF
 
 /*
  *  Characters allowed in file names and their alpha codes
@@ -107,6 +117,54 @@ bool setName( unsigned char *h, const char *name )
 
 
 /*
+ *  Check for the 2 header bytes of an FX-501P/FX-502P file:
+ *  second and third digit of the file number, type and first digit
+ */
+bool isHeader502( const unsigned char *h )
+{
+    int type = h[ 1 ] >> 4;
+
+    return ( type == TYPE502_PROGRAM || type == TYPE502_DATA )
+        && ( h[ 1 ] & 0x0F ) <= 9
+        && ( h[ 0 ] >> 4 ) <= 9 && ( h[ 0 ] & 0x0F ) <= 9;
+}
+
+
+/*
+ *  Check for the 8 header bytes of an FX-601P/FX-602P file
+ */
+bool isHeader602( const unsigned char *h )
+{
+    return h[ 1 ] == TYPE602_PROGRAM || h[ 1 ] == TYPE602_ALL
+        || h[ 1 ] == TYPE602_DATA;
+}
+
+
+/*
+ *  Store the file number in the header
+ *
+ *  FX-601P/FX-602P: header bytes 2..7 = last digit and 0xA,
+ *                   first and second digit, 0xFF 0xFF 0xFF 0xFF
+ *  FX-501P/FX-502P: header bytes 0..1 = second and third digit,
+ *                   type and first digit
+ */
+void setNumber( unsigned char *h, int number, bool fx502 )
+{
+    int d1 = number / 100, d2 = number / 10 % 10, d3 = number % 10;
+
+    if ( fx502 ) {
+        h[ 0 ] = (unsigned char) ( d2 << 4 | d3 );
+        h[ 1 ] = (unsigned char) ( ( h[ 1 ] & 0xF0 ) | d1 );
+    }
+    else {
+        h[ 2 ] = (unsigned char) ( d3 << 4 | 0x0A );
+        h[ 3 ] = (unsigned char) ( d1 << 4 | d2 );
+        memset( h + 4, 0xFF, 4 );
+    }
+}
+
+
+/*
  *  Main entry point
  */
 int main( int argc, char **argv )
@@ -114,6 +172,8 @@ int main( int argc, char **argv )
     long skip = 0;
     int lead_in = LEAD_IN_TIME;
     char *name = NULL;
+    char *number = NULL;
+    bool fx502;
     FILE *infp;
     KCS_FILE *out;
     int c, count = 0, i;
@@ -126,6 +186,9 @@ int main( int argc, char **argv )
         if ( strncmp( argv[ 1 ], "-n", 2 ) == 0 ) {
             name = argv[ 1 ] + 2;
         }
+        if ( strncmp( argv[ 1 ], "-f", 2 ) == 0 ) {
+            number = argv[ 1 ] + 2;
+        }
         if ( strncmp( argv[ 1 ], "-l", 2 ) == 0 ) {
             lead_in = atoi( argv[ 1 ] + 2 );
         }
@@ -137,7 +200,10 @@ int main( int argc, char **argv )
         printf( "usage: wave602 <options> infile outfile\n"
                 "         -b<skip> reads a binary file, "
                            "<skip> is an optional offset\n"
-                "         -n<name> sets the file name (up to 6 characters)\n"
+                "         -n<name> sets the file name (up to 6 characters, "
+                           "FX-601P/FX-602P only)\n"
+                "         -f<number> sets the file number (0..999, "
+                           "0 for none)\n"
                 "         -l<time> length of the lead-in in tens of "
                            "a second (default %d)\n",
                 LEAD_IN_TIME );
@@ -162,8 +228,32 @@ int main( int argc, char **argv )
         fprintf( stderr, "File %s is too short\n", argv[ 1 ] );
         return 2;
     }
+    fx502 = isHeader502( Data );
+    if ( !fx502 && !isHeader602( Data ) && ( name != NULL || number != NULL ) ) {
+        fprintf( stderr, "Unknown file format, cannot set the name or number\n" );
+        return 2;
+    }
+    if ( name != NULL && number != NULL ) {
+        fprintf( stderr, "Either a name or a number can be set\n" );
+        return 2;
+    }
+    if ( name != NULL && fx502 ) {
+        fprintf( stderr, "Files of the FX-501P/FX-502P have no name, "
+                         "use -f to set the number\n" );
+        return 2;
+    }
     if ( name != NULL && !setName( Data, name ) ) {
         return 2;
+    }
+    if ( number != NULL ) {
+        char *end;
+        long n = strtol( number, &end, 10 );
+
+        if ( *number == '\0' || *end != '\0' || n < 0 || n > 999 ) {
+            fprintf( stderr, "Invalid file number \"%s\"\n", number );
+            return 2;
+        }
+        setNumber( Data, (int) n, fx502 );
     }
 
     if ( ( out = kcsOpen( argv[ 2 ], "wb", 300, 8, 'E', 2 ) ) == NULL ) {

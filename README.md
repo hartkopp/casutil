@@ -29,7 +29,7 @@ Windows CE do not apply anymore.
 | wave730  | Create a WAV file from a binary file (PB-100 series, also FX-702P) |
 | wave850  | Create a WAV file from a binary file (PB-700 and later, FP-200) |
 | waveX07  | Create a WAV file from a binary file (Canon X-07) |
-| wave602  | Create a WAV file from a binary file (FX-601P, FX-602P) |
+| wave602  | Create a WAV file from a binary file (FX-601P, FX-602P, FX-501P, FX-502P) |
 | bas702   | Create a WAV, binary or ASCII encoded file from BASIC source (FX-702P) |
 | bas730   | Create a WAV, binary or ASCII encoded file from BASIC source (PB-100 series) |
 | bas850   | Create a WAV, binary, ASCII encoded or plain text file from BASIC source (PB-700 and later, FP-200) |
@@ -94,7 +94,7 @@ BASIC comparison sheet ([doc/basic-compare.html](doc/basic-compare.html)).
   but a 2 byte header with type and file number, the whole program area
   (128 or 256 steps) or the data registers (16 or 22, the FX-501P saves
   its 5 registers for parentheses as well). The FX-602P loads these
-  files. Tool: `list602`.
+  files. Tools: `list602`, `wave602`.
 - **MD-100 floppy drive** with the PB-1000 and the PB-2000C: `md100`.
 - **Casio fx-8000G** graphics calculator with the FA-80 interface, 2400
   bit/s: `list8000`.
@@ -207,10 +207,11 @@ lead-in sequences are shorter than in an original recording, which saves
 time when loading. `wave850` creates slow (`-s`) or fast (`-f`) files; use
 `-2` for the FP-200, which needs longer lead-ins.
 
-`wave602` creates a WAV file for the FX-601P/FX-602P from a binary file
-with header, programs or registers and footer, e.g. from `wav2raw -b`.
-`-n<name>` sets the file name in the header, which helps to repair a
-recording with a damaged header.
+`wave602` creates a WAV file for the FX-601P/FX-602P or FX-501P/FX-502P
+from a binary file with header, programs or registers and footer, e.g. from
+`wav2raw -b`. The format is detected from the header. `-n<name>` sets the
+file name (FX-601P/FX-602P only), `-f<number>` the file number (0 for
+none), which helps to repair a recording with a damaged header.
 
 The BASIC translators `bas702`, `bas730`, `bas850` and `basX07` read a
 source file, which may come from a list utility or an editor, and create a
