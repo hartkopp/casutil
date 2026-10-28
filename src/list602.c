@@ -469,7 +469,12 @@ void listProgram( int start, int end )
             stepStart( ++step, i, j < end ? j - i + 1 : j - i );
             printf( "\"" );
             for ( ++i; i < j; ++i ) {
-                if ( Data[ i ] >= TOKEN_M20 && Data[ i ] <= TOKEN_M80 ) {
+                /*
+                 *  A prefix without a register display is shown as \XX
+                 */
+                if ( Data[ i ] >= TOKEN_M20 && Data[ i ] <= TOKEN_M80
+                     && i + 1 < j && alphaRegister( buffer, Data[ i + 1 ], 0 ) )
+                {
                     offset = ( Data[ i ] - TOKEN_M20 + 1 ) * 20;
                     ++step;
                     continue;
