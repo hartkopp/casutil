@@ -92,7 +92,9 @@ BASIC comparison sheet ([doc/basic-compare.html](doc/basic-compare.html)).
   Tools: `list602`, `wave602`.
 - **FX-501P, FX-502P**: same interface and program codes as the FX-602P,
   but a 2 byte header with type and file number, the whole program area
-  or 22 data registers. The FX-602P loads these files. Tool: `list602`.
+  (128 or 256 steps) or the data registers (16 or 22, the FX-501P saves
+  its 5 registers for parentheses as well). The FX-602P loads these
+  files. Tool: `list602`.
 - **MD-100 floppy drive** with the PB-1000 and the PB-2000C: `md100`.
 - **Casio fx-8000G** graphics calculator with the FA-80 interface, 2400
   bit/s: `list8000`.
@@ -184,8 +186,8 @@ standard output.
 - `list602`: lists program, data, "all" and display data files of the FX-601P/FX-602P
   with file name or number, password, memory partition (`MODE .`),
   program steps and the memory registers. Program and data files of the
-  FX-501P/FX-502P are listed as well, with the data registers M0..M9, MF,
-  M.0..M.9 and M.F. Binary files are also accepted in the format of the
+  FX-501P/FX-502P are listed as well, with the data registers M0..M9, MF
+  and on the FX-502P M.0..M.9, M.F. Binary files are also accepted in the format of the
   FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
   and `√` in UTF-8, `-x` adds the hex codes of all steps. Codes without
   known meaning, e.g. from synthetic programming, are shown as `[XX]`,

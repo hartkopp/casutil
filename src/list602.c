@@ -1123,11 +1123,16 @@ bool isHeader502( int pos, int end )
  *
  *  2 header bytes: second and third digit of the file number,
  *                  type (0xB program, 0xF data) and first digit
- *  Program file: the whole program area, unused steps filled with 0xFF,
+ *  Program file: the whole program area of 128 (FX-501P) or 256
+ *                (FX-502P) steps, unused steps filled with 0xFF,
  *                followed by the footer
- *  Data file: 22 registers, followed by the footer. Each group of 11
- *             registers is stored in reverse order: MF, M9..M0, M.F,
- *             M.9..M.0
+ *  Data file: 16 (FX-501P) or 22 (FX-502P) registers, followed by the
+ *             footer. The registers are stored in reverse order in groups
+ *             of 11: MF, M9..M0, then M.F, M.9..M.0 on the FX-502P. The
+ *             FX-501P has only M0..M9 and MF, the 5 other registers are
+ *             the L registers for parentheses, which the FA-2 uses for
+ *             note codes in the music function. They are listed with
+ *             their position in the file.
  *  The program codes are the same as on the FX-602P.
  *  Returns the position behind the file
  */
@@ -1137,11 +1142,36 @@ int listFile502( int start, int end )
     int h1 = Data[ start + 1 ];
     int body = start + HEADER502_LEN;
     bool program = ( h1 >> 4 ) == TYPE502_PROGRAM;
+    const char *model = "FX-501P/FX-502P";
     bool footer;
-    int after;
+    int after, prog_end = body, count = 0;
 
-    printf( "%s file (FX-501P/FX-502P, type %02X %02X), ",
-            program ? "Program" : "Data", h0, h1 );
+    if ( program ) {
+        /*
+         *  The program ends with the first 0xFF, the unused steps and
+         *  the footer follow
+         */
+        int steps;
+
+        while ( prog_end < end && Data[ prog_end ] != 0xFF ) {
+            ++prog_end;
+        }
+        for ( after = prog_end; after < end && Data[ after ] == 0xFF; ++after )
+            ;
+        footer = after - prog_end >= FOOTER_LEN;
+        steps = after - FOOTER_LEN - body;
+        model = !footer ? model : steps == 128 ? "FX-501P"
+              : steps == 256 ? "FX-502P" : model;
+    }
+    else {
+        count = ( findRegisters( body, REGISTERS502, end, &after, &footer )
+                  - body ) / REG_LEN;
+        model = !footer ? model : count == 16 ? "FX-501P"
+              : count == 22 ? "FX-502P" : model;
+    }
+
+    printf( "%s file (%s, type %02X %02X), ",
+            program ? "Program" : "Data", model, h0, h1 );
     if ( h0 == 0x00 && h1 == ( program ? 0xB0 : 0xF0 ) ) {
         printf( "no name\n\n" );
     }
@@ -1149,32 +1179,17 @@ int listFile502( int start, int end )
         printf( "file number %X%X%X\n\n", h1 & 0x0F, h0 >> 4, h0 & 0x0F );
     }
 
-    if ( program ) {
-        int prog_end;
-
-        /*
-         *  The program ends with the first 0xFF, the unused steps and
-         *  the footer follow
-         */
-        for ( prog_end = body; prog_end < end && Data[ prog_end ] != 0xFF; ++prog_end )
-            ;
-        for ( after = prog_end; after < end && Data[ after ] == 0xFF; ++after )
-            ;
-        footer = after - prog_end >= FOOTER_LEN;
-        if ( body < prog_end ) {
-            listProgram( body, prog_end );
-        }
+    if ( program && body < prog_end ) {
+        listProgram( body, prog_end );
     }
-    else {
-        int data_end = findRegisters( body, REGISTERS502, end, &after, &footer );
-        int count = ( data_end - body ) / REG_LEN;
+    if ( !program ) {
         char reg[ 8 ];
         int n;
 
         /*
          *  List in the order M0..M9, MF, M.0..M.9, M.F
          */
-        for ( n = 0; n < count; ++n ) {
+        for ( n = 0; n < count && ( n < 11 || count == REGISTERS502 ); ++n ) {
             int group = n / 11;
             int index = n % 11;
             int pos = group * 11 + 10 - index;
@@ -1190,6 +1205,16 @@ int listFile502( int start, int end )
             }
             printf( "M%-3s = ", reg );
             printRegister( body + pos * REG_LEN );
+        }
+        if ( n < count ) {
+            /*
+             *  L registers of the FX-501P
+             */
+            printf( "\nL registers (parentheses)\n\n" );
+            for ( ; n < count; ++n ) {
+                printf( "[%02d] = ", n );
+                printRegister( body + n * REG_LEN );
+            }
         }
     }
     if ( !footer ) {
