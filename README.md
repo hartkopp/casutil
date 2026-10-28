@@ -25,7 +25,7 @@ Windows CE do not apply anymore.
 | list8000 | List programs, registers, graphics and text of the fx-8000G graphics calculators, export to FA-121 (CAS) and FA-122..124 (CAT) |
 | listX07  | List a binary or WAV file as BASIC text (Canon X-07) |
 | list74   | List a binary, PGM or WAV file as BASIC text (TI-74) |
-| list602  | List programs and data registers of a binary or WAV file (FX-601P, FX-602P) |
+| list602  | List programs and data registers of a binary or WAV file (FX-601P, FX-602P, FX-501P, FX-502P) |
 | wave730  | Create a WAV file from a binary file (PB-100 series, also FX-702P) |
 | wave850  | Create a WAV file from a binary file (PB-700 and later, FP-200) |
 | waveX07  | Create a WAV file from a binary file (Canon X-07) |
@@ -88,8 +88,11 @@ BASIC comparison sheet ([doc/basic-compare.html](doc/basic-compare.html)).
   Use option `-2` with `list850`, `wave850` and `bas850`.
 - **FX-601P, FX-602P**: keystroke programmable calculators, 300 bit/s
   through the FA-1 or FA-2. Programs are stored as one byte per step.
-  Files can have a file number (100..999) instead of a name, the format
-  is the same as on the FX-502P. Tools: `list602`, `wave602`.
+  Files can have a file number (100..999) instead of a name.
+  Tools: `list602`, `wave602`.
+- **FX-501P, FX-502P**: same interface and program codes as the FX-602P,
+  but a 2 byte header with type and file number, the whole program area
+  or 22 data registers. The FX-602P loads these files. Tool: `list602`.
 - **MD-100 floppy drive** with the PB-1000 and the PB-2000C: `md100`.
 - **Casio fx-8000G** graphics calculator with the FA-80 interface, 2400
   bit/s: `list8000`.
@@ -180,7 +183,9 @@ standard output.
 - `list74`: `-r` writes a PGM file for the TI PC interface.
 - `list602`: lists program, data, "all" and display data files of the FX-601P/FX-602P
   with file name or number, password, memory partition (`MODE .`),
-  program steps and the memory registers. Binary files are also accepted in the format of the
+  program steps and the memory registers. Program and data files of the
+  FX-501P/FX-502P are listed as well, the data registers M0..M9 by name and
+  the others by their position in the file. Binary files are also accepted in the format of the
   FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
   and `√` in UTF-8, `-x` adds the hex codes of all steps. Codes without
   known meaning, e.g. from synthetic programming, are shown as `[XX]`,

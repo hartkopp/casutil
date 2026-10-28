@@ -5,6 +5,7 @@
  *  FX-601P or FX-602P calculator through the FA-1 or FA-2 cassette
  *  interface. Program, data and "all" files are supported. Files can
  *  have a file number instead of a file name, as saved by the FX-502P.
+ *  Program and data files of the FX-501P/FX-502P are supported as well.
  *
  *  Options:
  *    -b<skip> read BIN file (Default); skip <skip> garbage bytes
@@ -17,6 +18,11 @@
  *    8 header bytes: 2 type bytes, file name or number (see getName())
  *    program steps and/or data registers (8 bytes each)
  *    8 bytes 0xFF terminate the program and the data part
+ *
+ *  File format of the FX-501P/FX-502P (see listFile502()):
+ *    2 header bytes: type and file number
+ *    the whole program area or 22 data registers
+ *    8 bytes 0xFF
  *
  *  Sources:
  *    Character and keyword codes by Mahmoud Yassine on the pages of
@@ -36,6 +42,11 @@
 #define REG_LEN    8          /* bytes per data register */
 #define DISPLAY_LEN   16      /* bytes of alpha display data */
 #define DISPLAY_CHARS 11      /* characters shown in the display */
+
+#define TYPE502_PROGRAM 0xB   /* FX-502P file types, high nibble of byte 1 */
+#define TYPE502_DATA    0xF
+#define HEADER502_LEN   2
+#define REGISTERS502    22
 
 #define TOKEN_ALPHA     0x2B  /* starts and ends alpha mode */
 #define TOKEN_M20       0x2C  /* prefix for M20..M39 and FIX */
@@ -313,11 +324,13 @@ void printAlpha( int code, int offset )
 
 /*
  *  Check the sign digit in byte 1 of a data register:
- *  hundreds digit of the biased exponent (0 or 1), plus 5 if negative
+ *  hundreds digit of the biased exponent (0 or 1), plus 5 if negative,
+ *  the FX-502P adds 8 instead of 5
  */
 bool isSignDigit( int digit )
 {
-    return digit == 0 || digit == 1 || digit == 5 || digit == 6;
+    return digit == 0 || digit == 1 || digit == 5 || digit == 6
+        || digit == 8 || digit == 9;
 }
 
 
@@ -419,7 +432,7 @@ const char HexDigits[] = "0123456789ABCDEF";
  *  Non decimal digits of synthetic numbers are shown as hex digits.
  *
  *  Byte 0: exponent digits 2 and 3
- *  Byte 1: exponent digit 1, plus 5 if the number is negative
+ *  Byte 1: exponent digit 1, plus 5 (FX-502P: 8) if the number is negative
  *  Byte 2: mantissa digit 10 (high nibble)
  *  Byte 3..6: mantissa digits 9..2
  *  Byte 7: mantissa digit 1 (low nibble)
@@ -432,7 +445,8 @@ void printNumber( const int *p )
     bool negative = p[ 1 ] >= 5;
     int exponent, i, n;
 
-    exponent = p[ 1 ] % 5 * 100 + ( p[ 0 ] >> 4 ) * 10
+    exponent = ( p[ 1 ] >= 8 ? p[ 1 ] - 8 : p[ 1 ] % 5 ) * 100
+             + ( p[ 0 ] >> 4 ) * 10
              + ( p[ 0 ] & 0x0F ) - 100;
     digits[ 0 ] = HexDigits[ p[ 7 ] & 0x0F ];
     for ( i = 1; i < 9; ++i ) {
@@ -485,6 +499,42 @@ void printNumber( const int *p )
 
 
 /*
+ *  Print the data register at Data[ i ]
+ */
+void printRegister( int i )
+{
+    if ( isRegister( Data + i ) ) {
+        printNumber( Data + i );
+    }
+    else if ( isSyntheticRegister( Data + i ) ) {
+        printNumber( Data + i );
+        printf( "  (synthetic)" );
+    }
+    else {
+        /*
+         *  Not a number, e.g. a register that was assigned with
+         *  MODE . but never cleared
+         */
+        int j;
+        printf( "[" );
+        for ( j = 0; j < REG_LEN; ++j ) {
+            printf( j ? " %02X" : "%02X", Data[ i + j ] );
+        }
+        printf( "]" );
+    }
+    if ( ShowHex && ( isRegister( Data + i ) || isSyntheticRegister( Data + i ) ) ) {
+        int j;
+        printf( "  [" );
+        for ( j = 0; j < REG_LEN; ++j ) {
+            printf( j ? " %02X" : "%02X", Data[ i + j ] );
+        }
+        printf( "]" );
+    }
+    printf( "\n" );
+}
+
+
+/*
  *  Print the data registers in Data[ start ] .. Data[ end - 1 ]
  *  Order: M00..M09, MF, M10..M19, M1F, ...
  */
@@ -496,36 +546,10 @@ void listRegisters( int start, int end )
     for ( i = start, n = 0; i + REG_LEN <= end; i += REG_LEN, ++n ) {
         registerName( reg, n / 11, n % 11 );
         printf( "M%-3s = ", reg );
-        if ( isRegister( Data + i ) ) {
-            printNumber( Data + i );
-        }
-        else if ( isSyntheticRegister( Data + i ) ) {
-            printNumber( Data + i );
-            printf( "  (synthetic)" );
-        }
-        else {
-            /*
-             *  Not a number, e.g. a register that was assigned with
-             *  MODE . but never cleared
-             */
-            int j;
-            printf( "[" );
-            for ( j = 0; j < REG_LEN; ++j ) {
-                printf( j ? " %02X" : "%02X", Data[ i + j ] );
-            }
-            printf( "]" );
-        }
-        if ( ShowHex && ( isRegister( Data + i ) || isSyntheticRegister( Data + i ) ) ) {
-            int j;
-            printf( "  [" );
-            for ( j = 0; j < REG_LEN; ++j ) {
-                printf( j ? " %02X" : "%02X", Data[ i + j ] );
-            }
-            printf( "]" );
-        }
-        printf( "\n" );
+        printRegister( i );
     }
 }
+
 
 
 /*
@@ -1081,6 +1105,97 @@ int listFile( int start, int header_len, int end )
 
 
 /*
+ *  Check for the header of an FX-501P/FX-502P file at Data[ pos ]
+ */
+bool isHeader502( int pos, int end )
+{
+    int type = Data[ pos + 1 ] >> 4;
+
+    return pos + HEADER502_LEN <= end
+        && ( type == TYPE502_PROGRAM || type == TYPE502_DATA )
+        && ( Data[ pos + 1 ] & 0x0F ) <= 9
+        && ( Data[ pos ] >> 4 ) <= 9 && ( Data[ pos ] & 0x0F ) <= 9;
+}
+
+
+/*
+ *  List a file of the FX-501P/FX-502P starting at Data[ start ]
+ *
+ *  2 header bytes: second and third digit of the file number,
+ *                  type (0xB program, 0xF data) and first digit
+ *  Program file: the whole program area, unused steps filled with 0xFF,
+ *                followed by the footer
+ *  Data file: 22 registers, followed by the footer. Each group of 11
+ *             registers is stored in reverse order, the positions 10..1
+ *             hold M0..M9. The other registers are not identified yet
+ *             and are shown with their position in the file.
+ *  The program codes are the same as on the FX-602P.
+ *  Returns the position behind the file
+ */
+int listFile502( int start, int end )
+{
+    int h0 = Data[ start ];
+    int h1 = Data[ start + 1 ];
+    int body = start + HEADER502_LEN;
+    bool program = ( h1 >> 4 ) == TYPE502_PROGRAM;
+    bool footer;
+    int after, n;
+
+    printf( "%s file (FX-501P/FX-502P, type %02X %02X), ",
+            program ? "Program" : "Data", h0, h1 );
+    if ( h0 == 0x00 && h1 == ( program ? 0xB0 : 0xF0 ) ) {
+        printf( "no name\n\n" );
+    }
+    else {
+        printf( "file number %X%X%X\n\n", h1 & 0x0F, h0 >> 4, h0 & 0x0F );
+    }
+
+    if ( program ) {
+        int prog_end;
+
+        /*
+         *  The program ends with the first 0xFF, the unused steps and
+         *  the footer follow
+         */
+        for ( prog_end = body; prog_end < end && Data[ prog_end ] != 0xFF; ++prog_end )
+            ;
+        for ( after = prog_end; after < end && Data[ after ] == 0xFF; ++after )
+            ;
+        footer = after - prog_end >= FOOTER_LEN;
+        if ( body < prog_end ) {
+            listProgram( body, prog_end );
+        }
+    }
+    else {
+        int data_end = findRegisters( body, REGISTERS502, end, &after, &footer );
+        int count = ( data_end - body ) / REG_LEN;
+
+        for ( n = 0; n < count; ++n ) {
+            /*
+             *  M0..M9 first, then the unknown registers
+             */
+            int pos = n < 10 ? 10 - n : n == 10 ? 0 : n;
+
+            if ( pos >= count ) {
+                continue;
+            }
+            if ( n < 10 ) {
+                printf( "M%d    = ", n );
+            }
+            else {
+                printf( "[%02d]  = ", pos );
+            }
+            printRegister( body + pos * REG_LEN );
+        }
+    }
+    if ( !footer ) {
+        printf( "\nEnd of file missing\n" );
+    }
+    return after;
+}
+
+
+/*
  *  Read a binary file into Data[]
  */
 bool readBinary( char *name, long skip )
@@ -1253,7 +1368,12 @@ int main( int argc, char **argv )
         if ( f < files && starts[ f ] < pos + HEADER_LEN ) {
             header_len = starts[ f ] - pos;
         }
-        pos = listFile( pos, header_len, Count );
+        if ( isHeader502( pos, Count ) ) {
+            pos = listFile502( pos, Count );
+        }
+        else {
+            pos = listFile( pos, header_len, Count );
+        }
         while ( f < files && starts[ f ] < pos ) {
             ++f;
         }
