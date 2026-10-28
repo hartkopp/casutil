@@ -706,9 +706,10 @@ int alphaBit7( int c )
 /*
  *  Decode the alpha display data of the calculator into c[ 16 ]:
  *  byte k holds the high nibbles and byte k + 8 the low nibbles of
- *  two characters, stored from the end. Bit 7 is set for some
- *  characters, e.g. 0xB2 for 'C', it is ignored and restored as in
- *  file names.
+ *  two characters, stored from the end. The text is right aligned and
+ *  padded with 0x0F, followed by 5 codes of unknown meaning, usually
+ *  CC 44 E0 00 FF. Bit 7 of the characters is not stored as in file
+ *  names, but it is always set for the sixth character.
  */
 void decodeDisplay( int *c, const int *p )
 {
@@ -722,6 +723,29 @@ void decodeDisplay( int *c, const int *p )
 
 
 /*
+ *  Character n of the decoded alpha display data
+ */
+int displayChar( const int *c, int n )
+{
+    return alphaBit7( c[ n ] & 0x7F );
+}
+
+
+/*
+ *  Index of the first character of the alpha display data,
+ *  after the padding
+ */
+int displayStart( const int *c )
+{
+    int i;
+
+    for ( i = 0; i < DISPLAY_CHARS && displayChar( c, i ) == 0x0F; ++i )
+        ;
+    return i;
+}
+
+
+/*
  *  Check for alpha display data of the calculator
  */
 bool isDisplayText( const int *p )
@@ -730,8 +754,8 @@ bool isDisplayText( const int *p )
     int i;
 
     decodeDisplay( c, p );
-    for ( i = 0; i < DISPLAY_CHARS; ++i ) {
-        if ( Alpha[ alphaBit7( c[ i ] & 0x7F ) ].ascii == NULL ) {
+    for ( i = displayStart( c ); i < DISPLAY_CHARS; ++i ) {
+        if ( Alpha[ displayChar( c, i ) ].ascii == NULL ) {
             return false;
         }
     }
@@ -917,16 +941,19 @@ int listFile( int start, int header_len, int end )
         display_number = true;
         steps = 0;
     }
-    else if ( h[ 1 ] == TYPE_DATA && footer == body + DISPLAY_LEN
-              && registerEnd( body, footer ) != footer
+    else if ( h[ 1 ] == TYPE_DATA && isFooter( body + DISPLAY_LEN, end )
+              && registerEnd( body, body + DISPLAY_LEN ) != body + DISPLAY_LEN
               && isDisplayText( Data + body ) )
     {
         /*
-         *  Display data (alpha) of the calculator
+         *  Display data (alpha) of the calculator, the padding of the
+         *  text may contain 0xFF bytes in front of the footer
          */
         content = "Display data (alpha)";
         display_text = true;
         steps = 0;
+        footer = prog_end = body + DISPLAY_LEN;
+        after = data = data_end = footer + FOOTER_LEN;
     }
     else if ( h[ 1 ] == TYPE_DATA && registerEnd( body, footer ) != footer
               && isAlphaText( body, footer ) )
@@ -1008,8 +1035,8 @@ int listFile( int start, int header_len, int end )
 
         decodeDisplay( c, Data + body );
         printf( "Display = \"" );
-        for ( i = 0; i < DISPLAY_CHARS; ++i ) {
-            printAlpha( alphaBit7( c[ i ] & 0x7F ), 0 );
+        for ( i = displayStart( c ); i < DISPLAY_CHARS; ++i ) {
+            printAlpha( displayChar( c, i ), 0 );
         }
         printf( "\"" );
         if ( ShowHex ) {
