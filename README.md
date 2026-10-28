@@ -226,12 +226,18 @@ loaded into the calculator again:
 - Alpha text is written in quotes with the escapes of `list602`, e.g.
   `"r=\ar05"`, codes without name as `[XX]`, a password as
   `Password "AB"` behind the program marker.
-- The header line of `list602` sets the name or number, the memory
-  partition and the format (FX-601P/FX-602P or FX-501P/FX-502P). Without
-  it, `-n<name>`, `-f<number>` and `-5` (FX-502P) or `-501` (FX-501P) set
-  them; the options take precedence.
-- Empty lines and lines starting with `#` are ignored. Only program files
-  are supported so far, the hex codes of `list602 -x` are not accepted.
+- A comment line `# @602`, `# @502` or `# @501` selects the calculator:
+  FX-601P/FX-602P, FX-502P (program area of 256 steps) or FX-501P (128
+  steps). `list602` writes this line in front of each file, text behind the
+  number is ignored, e.g. `# @502 (FX-502P or FX-501P with enough memory)`.
+- The header line of `list602` sets the name or number and the memory
+  partition. Without it, `-n<name>` and `-f<number>` set them, `-5`
+  (FX-502P) and `-501` (FX-501P) select the calculator; the options take
+  precedence. A calculator line that does not match the header line is an
+  error.
+- Other lines starting with `#` and empty lines are ignored. Only program
+  files are supported so far, the hex codes of `list602 -x` are not
+  accepted.
 
 ```
 list602 -w statpc.wav > statpc.txt

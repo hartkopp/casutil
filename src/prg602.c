@@ -22,9 +22,11 @@
  *    "text"      alpha text with the escapes of list602, e.g. \PI, \ar05
  *    [XX]        a code without name, e.g. from synthetic programming
  *    Password "text" directly after the program marker
+ *    # @602, # @502 or # @501 select the calculator: FX-601P/FX-602P,
+ *    FX-502P (256 steps) or FX-501P (128 steps). list602 writes this line.
  *    The header line of list602 sets the file type, name or number and
  *    the memory partition, the options take precedence.
- *    Empty lines, lines starting with # and "No program" are ignored.
+ *    Other lines starting with #, empty lines and "No program" are ignored.
  *    The hex codes of list602 -x are not accepted.
  */
 #include <stdio.h>
@@ -57,9 +59,11 @@ int Count = 0;
  */
 int Partition = -1;           /* FX-602P memory partition, header byte 0 */
 int Steps502 = -1;            /* FX-501P/FX-502P program area */
+int Calculator = -1;          /* 602, 502 or 501 from # @nnn, -1 if not set */
 int Number = -1;              /* file number */
 int NameCodes[ NAME_LEN ];    /* file name */
 int NameLen = -1;
+bool HeaderLine = false;      /* header line of list602 found */
 
 int LineNo = 0;
 
@@ -343,6 +347,7 @@ void headerLine( const char *line )
     const char *p = line + strlen( "Program file (" );
     unsigned int h0, h1;
 
+    HeaderLine = true;
     if ( strncmp( p, "FX-50", 5 ) == 0 ) {
         Steps502 = strncmp( p, "FX-501P,", 8 ) == 0 ? STEPS501 : STEPS502;
     }
@@ -378,6 +383,36 @@ void headerLine( const char *line )
 
 
 /*
+ *  Parse the calculator identifier "# @602", "# @502" or "# @501"
+ *  Returns false if the line is no identifier
+ */
+bool calculatorLine( const char *p )
+{
+    int calculator;
+
+    if ( *p++ != '#' ) {
+        return false;
+    }
+    while ( *p == ' ' || *p == '\t' ) {
+        ++p;
+    }
+    if ( *p != '@' ) {
+        return false;
+    }
+    calculator = atoi( p + 1 );
+    if ( calculator != 602 && calculator != 502 && calculator != 501 ) {
+        error( "Unknown calculator \"%.*s\", use @602, @502 or @501",
+               fieldLength( p ), p );
+    }
+    if ( Calculator > 0 && Calculator != calculator ) {
+        error( "Calculator @%d does not match @%d", calculator, Calculator );
+    }
+    Calculator = calculator;
+    return true;
+}
+
+
+/*
  *  Translate a line of the listing
  */
 void translateLine( char *line )
@@ -387,6 +422,9 @@ void translateLine( char *line )
 
     while ( *p == ' ' || *p == '\t' ) {
         ++p;
+    }
+    if ( calculatorLine( p ) ) {
+        return;
     }
     if ( *p == '\0' || *p == '#' || strcmp( p, "No program" ) == 0
          || strncmp( p, "End of ", 7 ) == 0 )
@@ -563,8 +601,17 @@ int main( int argc, char **argv )
     }
 
     /*
-     *  Options take precedence over the header line
+     *  The calculator identifier must match the header line,
+     *  the options take precedence over both
      */
+    if ( Calculator > 0 ) {
+        int steps = Calculator == 501 ? STEPS501 : Calculator == 502 ? STEPS502 : -1;
+
+        if ( HeaderLine && steps != Steps502 ) {
+            error( "Calculator @%d does not match the header line", Calculator );
+        }
+        Steps502 = steps;
+    }
     if ( steps502 > 0 ) {
         Steps502 = steps502;
     }

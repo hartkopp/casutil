@@ -14,6 +14,9 @@
  *    -u       use UTF-8 characters instead of ASCII
  *    -x       show the hex codes of all steps
  *
+ *  Each file starts with a comment line naming the calculator, "# @602",
+ *  "# @502" or "# @501", which is read by prg602.
+ *
  *  File format:
  *    8 header bytes: 2 type bytes, file name or number (see getName())
  *    program steps and/or data registers (8 bytes each)
@@ -847,6 +850,7 @@ int listFile( int start, int header_len, int end )
         }
     }
 
+    printf( "# @602\n" );
     printf( "%s file (type %02X %02X%s), ", content, h[ 0 ], h[ 1 ],
             h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA
             ? ", unknown" : "" );
@@ -987,6 +991,7 @@ int listFile502( int start, int end )
               : count == 22 ? "FX-502P" : model;
     }
 
+    printf( "# @%s\n", strcmp( model, "FX-501P" ) == 0 ? "501" : "502" );
     printf( "%s file (%s, type %02X %02X), ",
             program ? "Program" : "Data", model, h0, h1 );
     if ( h0 == 0x00 && h1 == ( program ? 0xB0 : 0xF0 ) ) {
