@@ -220,7 +220,9 @@ none), which helps to repair a recording with a damaged header.
 
 `prg602` translates a listing in the format of `list602` back into a WAV
 file (`-b`: binary file), so programs and data can be listed, edited and
-loaded into the calculator again. The text describes the file completely:
+loaded into the calculator again. The text describes the file completely,
+the extension `.prg` is used for these listings like `.bas` for BASIC
+programs:
 
 - Comment lines `# @key value` describe the file, `list602` writes them in
   front of each file. Options of `prg602` take precedence:
@@ -256,8 +258,8 @@ loaded into the calculator again. The text describes the file completely:
   are ignored.
 
 ```
-list602 -w statpc.wav > statpc.txt
-prg602 statpc.txt statpc2.wav
+list602 -w statpc.wav > statpc.prg
+prg602 statpc.prg statpc2.wav
 ```
 
 The BASIC translators `bas702`, `bas730`, `bas850` and `basX07` read a

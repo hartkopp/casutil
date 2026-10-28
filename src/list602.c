@@ -627,24 +627,20 @@ bool isDisplayText( const int *p )
 
 
 /*
- *  Print a file number from the digit bytes d12 (first and second digit)
- *  and d3 (third digit in the high nibble), the number 000 means no name
- *  With directive, the line "# @number" for prg602 is printed instead,
- *  nothing if there is no name.
+ *  Print the line "# @number" for prg602 from the digit bytes d12 (first
+ *  and second digit) and d3 (third digit in the high nibble), nothing for
+ *  the number 000, which means no name
  */
-void printNumber502( int d12, int d3, bool directive )
+void printNumber502( int d12, int d3 )
 {
     int d1 = d12 >> 4, d2 = d12 & 0x0F;
 
     d3 >>= 4;
-    if ( d1 == 0 && d2 == 0 && d3 == 0 ) {
-        printf( directive ? "" : "no name" );
-    }
-    else if ( !directive ) {
-        printf( "file number %X%X%X", d1, d2, d3 );
-    }
-    else if ( d1 <= 9 && d2 <= 9 && d3 <= 9 ) {
+    if ( ( d1 != 0 || d2 != 0 || d3 != 0 ) && d1 <= 9 && d2 <= 9 && d3 <= 9 ) {
         printf( "# @number %d\n", d1 * 100 + d2 * 10 + d3 );
+    }
+    else if ( d1 > 9 || d2 > 9 || d3 > 9 ) {
+        printf( "# Invalid file number %X%X%X\n", d1, d2, d3 );
     }
 }
 
@@ -658,10 +654,10 @@ void printNumber502( int d12, int d3, bool directive )
  *  The file number 000 is used if no name or number is entered.
  *  FX-602P file name: 6 alpha characters without bit 7, nibbles spread
  *                     over the bytes 2..7
- *  With directive, the line "# @name" or "# @number" for prg602 is
- *  printed instead, nothing if there is no name.
+ *  The line "# @name" or "# @number" for prg602 is printed, nothing if
+ *  there is no name.
  */
-void printName( const int *h, bool directive )
+void printName( const int *h )
 {
     int c[ 6 ];
     int i, n;
@@ -669,13 +665,12 @@ void printName( const int *h, bool directive )
     if ( h[ 2 ] == 0xFF && h[ 3 ] == 0xFF && h[ 4 ] == 0xFF
          && h[ 5 ] == 0xFF && h[ 6 ] == 0xFF && h[ 7 ] == 0xFF )
     {
-        printf( directive ? "" : "no name" );
         return;
     }
     if ( ( h[ 2 ] & 0x0F ) == 0x0A
          && h[ 4 ] == 0xFF && h[ 5 ] == 0xFF && h[ 6 ] == 0xFF && h[ 7 ] == 0xFF )
     {
-        printNumber502( h[ 3 ], ( h[ 2 ] & 0xF0 ) | 0x0A, directive );
+        printNumber502( h[ 3 ], ( h[ 2 ] & 0xF0 ) | 0x0A );
         return;
     }
     c[ 0 ] = ( h[ 7 ] & 0xF0 ) | ( h[ 4 ] >> 4 );
@@ -696,11 +691,11 @@ void printName( const int *h, bool directive )
         ;
     for ( n = 6; n > i && ( c[ n - 1 ] == 0x0F || c[ n - 1 ] == 0x7F ); --n )
         ;
-    printf( directive ? "# @name \"" : "name \"" );
+    printf( "# @name \"" );
     for ( ; i < n; ++i ) {
         printAlpha( c[ i ], 0 );
     }
-    printf( directive ? "\"\n" : "\"" );
+    printf( "\"\n" );
 }
 
 
@@ -795,7 +790,6 @@ int listFile( int start, int header_len, int end )
     bool display_alpha = false;
     bool display_text = false;
     bool fx601;
-    const char *content;
     const char *file;
     int i;
 
@@ -822,7 +816,6 @@ int listFile( int start, int header_len, int end )
         /*
          *  Display data (numeric), a single register
          */
-        content = "Display data (numeric)";
         file = "display";
         display_number = true;
         steps = 0;
@@ -835,7 +828,6 @@ int listFile( int start, int header_len, int end )
          *  Display data (alpha) of the calculator, the padding of the
          *  text may contain 0xFF bytes in front of the footer
          */
-        content = "Display data (alpha)";
         file = "display";
         display_text = true;
         steps = 0;
@@ -848,7 +840,6 @@ int listFile( int start, int header_len, int end )
         /*
          *  Display data (alpha) of the simulator, the text as alpha codes
          */
-        content = "Display data (alpha)";
         file = "display";
         display_alpha = true;
         steps = 0;
@@ -858,7 +849,6 @@ int listFile( int start, int header_len, int end )
          *  The whole program area, unused steps filled with 0xFF,
          *  a separating 0xFF and all registers
          */
-        content = "All (programs and data)";
         file = "all";
         prog_end = body + steps < end ? body + steps : end;
         data = prog_end < end && Data[ prog_end ] == 0xFF ? prog_end + 1 : prog_end;
@@ -870,7 +860,6 @@ int listFile( int start, int header_len, int end )
         /*
          *  Data registers only
          */
-        content = "Data";
         file = "data";
         data = body;
         prog_end = body;
@@ -888,7 +877,6 @@ int listFile( int start, int header_len, int end )
             after = footer2 < end ? footer2 + FOOTER_LEN : end;
             data_footer = footer2 < end;
         }
-        content = data_end > data ? "All (programs and data)" : "Program";
         file = data_end > data ? "all" : "program";
         if ( h[ 1 ] == TYPE_DATA ) {
             /*
@@ -911,29 +899,26 @@ int listFile( int start, int header_len, int end )
     printf( "# @calculator %s\n", fx601 ? "601" : "602" );
     printf( "# @file %s\n", file );
     if ( header_len == HEADER_LEN ) {
-        printName( h, true );
+        printName( h );
     }
     if ( !fx601 && h[ 0 ] >= 0x04 && h[ 0 ] <= 0x40 ) {
         printf( "# @mode .%d\n", 20 + ( 512 - h[ 0 ] * 8 ) / 8 );
     }
-    printf( "# %s file (%stype %02X %02X%s), ", content, fx601 ? "FX-601P, " : "",
-            h[ 0 ], h[ 1 ],
-            h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA
-            ? ", unknown" : "" );
+
+    /*
+     *  Remarks on damaged or unknown files
+     */
     if ( header_len < HEADER_LEN ) {
-        printf( "header incomplete:" );
+        printf( "# Header incomplete:" );
         for ( i = 0; i < header_len; ++i ) {
             printf( " %02X", h[ i ] );
         }
+        printf( "\n" );
     }
-    else {
-        printName( h, false );
+    else if ( h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA ) {
+        printf( "# Unknown file type %02X %02X\n", h[ 0 ], h[ 1 ] );
     }
-    if ( steps > 0 && !fx601 ) {
-        printf( ", %d steps, %d registers%s", steps, registers,
-                h[ 0 ] == PARTITION601 ? " or FX-601P" : "" );
-    }
-    printf( "\n\n" );
+    printf( "\n" );
 
     if ( display_number ) {
         printf( "Display = " );
@@ -1069,11 +1054,8 @@ int listFile502( int start, int end )
      */
     printf( "# @calculator %s\n", strcmp( model, "FX-501P" ) == 0 ? "501" : "502" );
     printf( "# @file %s\n", program ? "program" : "data" );
-    printNumber502( ( h1 & 0x0F ) << 4 | h0 >> 4, h0 << 4 & 0xF0, true );
-    printf( "# %s file (%s, type %02X %02X), ",
-            program ? "Program" : "Data", model, h0, h1 );
-    printNumber502( ( h1 & 0x0F ) << 4 | h0 >> 4, h0 << 4 & 0xF0, false );
-    printf( "\n\n" );
+    printNumber502( ( h1 & 0x0F ) << 4 | h0 >> 4, h0 << 4 & 0xF0 );
+    printf( "\n" );
 
     if ( program && body < prog_end ) {
         listProgram( body, prog_end );
