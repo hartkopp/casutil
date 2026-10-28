@@ -89,7 +89,9 @@ BASIC comparison sheet ([doc/basic-compare.html](doc/basic-compare.html)).
   Use option `-2` with `list850`, `wave850` and `bas850`.
 - **FX-601P, FX-602P**: keystroke programmable calculators, 300 bit/s
   through the FA-1 or FA-2. Programs are stored as one byte per step.
-  Files can have a file number (100..999) instead of a name.
+  Files can have a file number (100..999) instead of a name. The FX-601P
+  has 128 steps like the FX-602P with `MODE . 68`, but saves only 16
+  registers: M00..M09, MF and its 5 registers for parentheses.
   Tools: `list602`, `wave602`, `prg602`.
 - **FX-501P, FX-502P**: same interface and program codes as the FX-602P,
   but a 2 byte header with type and file number, the whole program area

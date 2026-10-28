@@ -43,6 +43,8 @@
 #define LEAD_IN    -1         /* lead-in marker in the input buffer */
 #define DISPLAY_LEN   16      /* bytes of alpha display data */
 #define DISPLAY_CHARS 11      /* characters shown in the display */
+#define PARTITION601  0x10    /* FX-601P: 128 steps */
+#define REGISTERS601  16      /* FX-601P: M00..M09, MF and 5 L registers */
 
 /*
  *  Options
@@ -345,6 +347,22 @@ void printRegister( int i )
         printf( "]" );
     }
     printf( "\n" );
+}
+
+
+/*
+ *  Print the L registers for parentheses of the FX-501P and FX-601P,
+ *  the registers first .. count - 1 at Data[ start ], with their position
+ */
+void listParentheses( int start, int first, int count )
+{
+    int n;
+
+    printf( "\nL registers (parentheses)\n\n" );
+    for ( n = first; n < count; ++n ) {
+        printf( "[%02d] = ", n );
+        printRegister( start + n * REG_LEN );
+    }
 }
 
 
@@ -753,6 +771,7 @@ int listFile( int start, int header_len, int end )
     bool display_number = false;
     bool display_alpha = false;
     bool display_text = false;
+    bool fx601;
     const char *content;
     int i;
 
@@ -850,8 +869,15 @@ int listFile( int start, int header_len, int end )
         }
     }
 
+    /*
+     *  The FX-601P has 128 steps like the FX-602P with MODE . 68, but
+     *  only 16 registers: M00..M09, MF and 5 L registers for parentheses
+     */
+    fx601 = h[ 0 ] == PARTITION601 && data_end - data == REGISTERS601 * REG_LEN;
+
     printf( "# @602\n" );
-    printf( "%s file (type %02X %02X%s), ", content, h[ 0 ], h[ 1 ],
+    printf( "%s file (%stype %02X %02X%s), ", content, fx601 ? "FX-601P, " : "",
+            h[ 0 ], h[ 1 ],
             h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA
             ? ", unknown" : "" );
     if ( header_len < HEADER_LEN ) {
@@ -863,8 +889,9 @@ int listFile( int start, int header_len, int end )
     else {
         printName( h );
     }
-    if ( steps > 0 ) {
-        printf( ", %d steps, %d registers", steps, registers );
+    if ( steps > 0 && !fx601 ) {
+        printf( ", %d steps, %d registers%s", steps, registers,
+                h[ 0 ] == PARTITION601 ? " or FX-601P" : "" );
     }
     printf( "\n\n" );
 
@@ -910,7 +937,13 @@ int listFile( int start, int header_len, int end )
             if ( body < i ) {
                 printf( "\nData\n\n" );
             }
-            listRegisters( data, data_end );
+            if ( fx601 ) {
+                listRegisters( data, data + 11 * REG_LEN );
+                listParentheses( data, 11, REGISTERS601 );
+            }
+            else {
+                listRegisters( data, data_end );
+            }
         }
     }
     if ( prog_end == end ) {
@@ -1029,14 +1062,7 @@ int listFile502( int start, int end )
             printRegister( body + pos * REG_LEN );
         }
         if ( n < count ) {
-            /*
-             *  L registers of the FX-501P
-             */
-            printf( "\nL registers (parentheses)\n\n" );
-            for ( ; n < count; ++n ) {
-                printf( "[%02d] = ", n );
-                printRegister( body + n * REG_LEN );
-            }
+            listParentheses( body, n, count );
         }
     }
     if ( !footer ) {
