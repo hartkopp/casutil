@@ -696,6 +696,7 @@ void listProgram( int start, int end )
  *  File number (FX-502P, FX-602P): header[ 2 ] = last digit and 0xA,
  *                                  header[ 3 ] = first and second digit,
  *                                  header[ 4..7 ] = 0xFF
+ *  The file number 000 is used if no name or number is entered.
  *  FX-602P file name: 6 alpha characters without bit 7, nibbles spread
  *                     over the bytes 2..7
  */
@@ -713,6 +714,10 @@ void printName( const int *h )
     if ( ( h[ 2 ] & 0x0F ) == 0x0A
          && h[ 4 ] == 0xFF && h[ 5 ] == 0xFF && h[ 6 ] == 0xFF && h[ 7 ] == 0xFF )
     {
+        if ( h[ 2 ] == 0x0A && h[ 3 ] == 0x00 ) {
+            printf( "no name" );
+            return;
+        }
         printf( "file number %X%X%X",
                 h[ 3 ] >> 4, h[ 3 ] & 0x0F, h[ 2 ] >> 4 );
         return;

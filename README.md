@@ -88,8 +88,8 @@ BASIC comparison sheet ([doc/basic-compare.html](doc/basic-compare.html)).
   Use option `-2` with `list850`, `wave850` and `bas850`.
 - **FX-601P, FX-602P**: keystroke programmable calculators, 300 bit/s
   through the FA-1 or FA-2. Programs are stored as one byte per step.
-  Files can have a file number instead of a name, the format is the same
-  as on the FX-502P. Tools: `list602`, `wave602`.
+  Files can have a file number (100..999) instead of a name, the format
+  is the same as on the FX-502P. Tools: `list602`, `wave602`.
 - **MD-100 floppy drive** with the PB-1000 and the PB-2000C: `md100`.
 - **Casio fx-8000G** graphics calculator with the FA-80 interface, 2400
   bit/s: `list8000`.
