@@ -20,6 +20,16 @@
 #define MIN_GOOD 4
 
 /*
+ *  Tolerances for the length of zero and one waves in kcsReadBit()
+ *  in samples for the reference length of a zero wave: 18 samples with
+ *  300 bit/s and 22050 samples per second. This is about 22% of the
+ *  zero wave and 22% of the one wave.
+ */
+#define REF_WAVE_LENGTH 18
+#define ZERO_TOLERANCE  4
+#define ONE_TOLERANCE   2
+
+/*
  *  Open a wave file
  *
  *  openmode is "rb" or "wb"
@@ -1152,6 +1162,31 @@ static int kcsReadWave( KCS_FILE *file )
 
 
 /*
+ *  Scale a tolerance from the reference wave length to the length of
+ *  a zero wave of the file
+ *
+ *  The tolerance depends on the wave length in samples and not on the
+ *  sample rate alone: the wave length results from the sample rate and
+ *  the tape format, e.g. 18 samples with 300 or 1200 bit/s, but 9
+ *  samples with 2400 bit/s at 22050 samples per second. Tape speed
+ *  variations change the wave length by the same percentage in all
+ *  formats.
+ *
+ *  The reference value is kept as minimum for short waves, e.g. at
+ *  11025 samples per second or with 2400 bit/s, where it allows more
+ *  than 22%. Recordings with up to 22050 samples per second are
+ *  therefore decoded as before, while e.g. 44100 samples per second get
+ *  twice the tolerance in samples.
+ */
+static int waveTolerance( KCS_FILE *file, int tolerance )
+{
+    int scaled = file->zeroWaveLength * tolerance / REF_WAVE_LENGTH;
+
+    return scaled > tolerance ? scaled : tolerance;
+}
+
+
+/*
  *  Read a KCS coded bit
  *
  *  Returns
@@ -1167,10 +1202,12 @@ int kcsReadBit( KCS_FILE *file )
     int isZero;
     int isOne;
     int isBetween;
-    int zeroMin = file->zeroWaveLength - 4;
-    int zeroMax = file->zeroWaveLength + 4;
-    int oneMin = ( file->zeroWaveLength + 1 ) / 2 - 2;
-    int oneMax = ( file->zeroWaveLength + 1 ) / 2 + 2;
+    int zeroTol = waveTolerance( file, ZERO_TOLERANCE );
+    int oneTol = waveTolerance( file, ONE_TOLERANCE );
+    int zeroMin = file->zeroWaveLength - zeroTol;
+    int zeroMax = file->zeroWaveLength + zeroTol;
+    int oneMin = ( file->zeroWaveLength + 1 ) / 2 - oneTol;
+    int oneMax = ( file->zeroWaveLength + 1 ) / 2 + oneTol;
     int countZero = 0;
     int countOne = 0;
 
