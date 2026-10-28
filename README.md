@@ -30,7 +30,7 @@ Windows CE do not apply anymore.
 | wave850  | Create a WAV file from a binary file (PB-700 and later, FP-200) |
 | waveX07  | Create a WAV file from a binary file (Canon X-07) |
 | wave602  | Create a WAV file from a binary file (FX-601P, FX-602P, FX-501P, FX-502P) |
-| prg602   | Create a WAV or binary file from a program listing (FX-601P, FX-602P, FX-501P, FX-502P) |
+| prg602   | Create a WAV or binary file from a listing of programs or data (FX-601P, FX-602P, FX-501P, FX-502P) |
 | bas702   | Create a WAV, binary or ASCII encoded file from BASIC source (FX-702P) |
 | bas730   | Create a WAV, binary or ASCII encoded file from BASIC source (PB-100 series) |
 | bas850   | Create a WAV, binary, ASCII encoded or plain text file from BASIC source (PB-700 and later, FP-200) |
@@ -194,7 +194,9 @@ standard output.
   FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
   and `√` in UTF-8, `-x` adds the hex codes of all steps. Codes without
   known meaning, e.g. from synthetic programming, are shown as `[XX]`,
-  unknown alpha characters as `\XX`.
+  unknown alpha characters as `\XX`. Each file starts with the comment
+  lines `# @calculator`, `# @file`, `# @name` or `# @number` and
+  `# @mode`, which describe the file for `prg602`.
 
 Example for an fx-8000G recording:
 
@@ -216,30 +218,42 @@ from a binary file with header, programs or registers and footer, e.g. from
 file name (FX-601P/FX-602P only), `-f<number>` the file number (0 for
 none), which helps to repair a recording with a damaged header.
 
-`prg602` translates a program listing in the format of `list602` back into
-a WAV file (`-b`: binary file), so a program can be listed, edited and
-loaded into the calculator again:
+`prg602` translates a listing in the format of `list602` back into a WAV
+file (`-b`: binary file), so programs and data can be listed, edited and
+loaded into the calculator again. The text describes the file completely:
 
+- Comment lines `# @key value` describe the file, `list602` writes them in
+  front of each file. Options of `prg602` take precedence:
+
+  | Line | Values | Default | Option |
+  |------|--------|---------|--------|
+  | `# @calculator` | `602`, `601`, `502`, `501` | `602` | `-c<calc>` |
+  | `# @file` | `program`, `data`, `all`, `display` | from the content | |
+  | `# @name` | `"name"`, up to 6 characters (FX-601P/FX-602P) | no name | `-n<name>` |
+  | `# @number` | `0`..`999` | no name | `-f<number>` |
+  | `# @mode` | memory partition `.20`..`.80` (FX-602P) | `.20` | |
+
+  `601` is the FX-601P with 128 steps and 16 registers, `502` and `501`
+  write the program area of 256 or 128 steps. An unknown key is an error.
 - `P0`..`P9` start a program, the steps follow separated by blanks or one
-  per line. Step numbers of 3 digits in front are ignored.
+  per line. Step numbers of 3 digits in front and the hex codes of
+  `list602 -x` are ignored.
 - Steps are written as listed by `list602`, in ASCII or UTF-8, e.g.
   `MR1F`, `FIX2`, `x^2` or `x²`. Names of steps are also accepted in
   other case.
 - Alpha text is written in quotes with the escapes of `list602`, e.g.
   `"r=\ar05"`, codes without name as `[XX]`, a password as
   `Password "AB"` behind the program marker.
-- A comment line `# @602`, `# @502` or `# @501` selects the calculator:
-  FX-601P/FX-602P, FX-502P (program area of 256 steps) or FX-501P (128
-  steps). `list602` writes this line in front of each file, text behind the
-  number is ignored, e.g. `# @502 (FX-502P or FX-501P with enough memory)`.
-- The header line of `list602` sets the name or number and the memory
-  partition. Without it, `-n<name>` and `-f<number>` set them, `-5`
-  (FX-502P) and `-501` (FX-501P) select the calculator; the options take
-  precedence. A calculator line that does not match the header line is an
-  error.
-- Other lines starting with `#` and empty lines are ignored. Only program
-  files are supported so far, the hex codes of `list602 -x` are not
-  accepted.
+- Data registers are written as `M05 = 1.5`, `M1F = -2.5e-12`, on the
+  FX-501P/FX-502P also as `M5`, `M.5`, `M.F`, the L registers of the
+  FX-501P/FX-601P as `[11]`..`[15]`. A value is a number, 8 bytes in
+  brackets or a number followed by the bytes of `list602 -x`. Hex digits
+  are only accepted in numbers marked as `(synthetic)`. Registers which
+  are not listed are 0.
+- Display data are written as `Display = 55555` or `Display = "TEXT"`,
+  optionally followed by the 16 codes of `list602 -x`.
+- Other lines starting with `#`, empty lines and the headings of `list602`
+  are ignored.
 
 ```
 list602 -w statpc.wav > statpc.txt

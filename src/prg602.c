@@ -1,20 +1,25 @@
 /*
- *  prg602.c - Create Casio FX-601P/FX-602P tape files from program text
+ *  prg602.c - Create Casio FX-601P/FX-602P tape files from text
  *
- *  This program translates a program listing into a tape image of the
- *  FX-601P/FX-602P or FX-501P/FX-502P calculator and writes it as WAV
- *  file, which can be loaded through the FA-1 or FA-2 cassette interface,
- *  or as binary file. The listing has the format created by list602, so a
- *  program can be listed, edited and written back to the calculator.
+ *  This program translates a listing into a tape image of the FX-601P/
+ *  FX-602P or FX-501P/FX-502P calculator and writes it as WAV file, which
+ *  can be loaded through the FA-1 or FA-2 cassette interface, or as binary
+ *  file. The listing has the format created by list602, so programs and
+ *  data can be listed, edited and written back to the calculator.
  *
  *  Options:
  *    -b         create a binary file instead of a WAV file
+ *    -c<calc>   set the calculator: 602, 601, 502 or 501
  *    -n<name>   set the file name (up to 6 characters, FX-601P/FX-602P)
  *    -f<number> set the file number (0..999, 0 for none)
- *    -5         create a file for the FX-502P, -501 for the FX-501P
  *    -l<time>   length of the lead-in in tens of a second (default 50)
  *
  *  Input format:
+ *    # @key value  describes the file, the options take precedence:
+ *      # @calculator 602, 601, 502 or 501 (default 602)
+ *      # @file program, data, all or display (default from the content)
+ *      # @name "name" or # @number n (default: no name)
+ *      # @mode .nn, the memory partition of the FX-602P (default .20)
  *    P0..P9      start a program
  *    steps       one or more per line, separated by blanks, in ASCII or
  *                UTF-8 as listed by list602, e.g. LBL0, MR1F, FIX3, x^2
@@ -22,12 +27,16 @@
  *    "text"      alpha text with the escapes of list602, e.g. \PI, \ar05
  *    [XX]        a code without name, e.g. from synthetic programming
  *    Password "text" directly after the program marker
- *    # @602, # @502 or # @501 select the calculator: FX-601P/FX-602P,
- *    FX-502P (256 steps) or FX-501P (128 steps). list602 writes this line.
- *    The header line of list602 sets the file type, name or number and
- *    the memory partition, the options take precedence.
- *    Other lines starting with #, empty lines and "No program" are ignored.
- *    The hex codes of list602 -x are not accepted.
+ *    M05 = 1.5   a data register: a number, 8 bytes in brackets, or a
+ *                number followed by the bytes as listed by list602 -x.
+ *                Names as M00..M99, MF, M1F.., on the FX-501P/FX-502P
+ *                also M0..M9, M.0..M.9, M.F, [11]..[15] for the
+ *                L registers of the FX-501P/FX-601P.
+ *    Display = 55555 or Display = "TEXT", optionally followed by the
+ *                16 codes as listed by list602 -x
+ *    Other lines starting with #, empty lines and the headings of list602
+ *    are ignored. The hex codes of program steps (list602 -x) are not
+ *    accepted.
  */
 #include <stdio.h>
 #include <string.h>
@@ -39,31 +48,68 @@
 #include "wave.h"
 #include "fx602.h"
 
-#define MAX_CODES    0x1000   /* more than any program area */
-#define LINE_LEN     1024
-#define NAME_LEN     6
-#define NAME_PADDING 0x0F     /* fills short names from the left */
-#define LEAD_IN_TIME 50       /* tens of a second, as the FX-602P */
-#define PARTITION    0x40     /* 512 steps, 22 registers (MODE . 20) */
-#define STEPS501     128      /* program area of the FX-501P */
-#define STEPS502     256      /* program area of the FX-502P */
+#define MAX_CODES     0x1000  /* more than any program area */
+#define MAX_REGISTERS 200     /* register lines in the listing */
+#define LINE_LEN      1024
+#define NAME_LEN      6
+#define NAME_PADDING  0x0F    /* fills short names from the left */
+#define LEAD_IN_TIME  50      /* tens of a second, as the FX-602P */
+#define MODE          20      /* default memory partition, MODE . 20 */
+#define STEPS501      128     /* program area of the FX-501P */
+#define STEPS502      256     /* program area of the FX-502P */
+#define PARTITION601  0x10    /* FX-601P: 128 steps */
+#define REGISTERS601  16      /* FX-501P/FX-601P: M0..M9, MF, 5 L registers */
+#define DISPLAY_LEN   16      /* bytes of alpha display data */
+#define DISPLAY_CHARS 11      /* characters shown in the display */
+#define DISPLAY_FLAG  5       /* bit 7 is set for the sixth character */
 
 /*
- *  Program codes
+ *  File types of # @file
  */
-int Code[ MAX_CODES ];
+enum { FILE_PROGRAM, FILE_DATA, FILE_ALL, FILE_DISPLAY };
+const char *FileTypes[] = { "program", "data", "all", "display" };
+
+/*
+ *  A data register from the listing
+ */
+typedef struct _register {
+    int group;                /* tens digit, 1 for M.0..M.F */
+    int index;                /* 0..9, 10 for F, -1 for an L register */
+    int position;             /* position of an L register [nn] */
+    bool raw;                 /* bytes[] given */
+    int bytes[ REG_LEN ];
+    bool negative;
+    char digits[ 11 ];        /* 10 mantissa digits, hex if synthetic */
+    int exponent;
+    int line;
+} REGISTER;
+
+/*
+ *  Contents of the listing
+ */
+int Code[ MAX_CODES ];        /* program codes */
 int Count = 0;
+REGISTER Registers[ MAX_REGISTERS ];
+int RegisterCount = 0;
+bool DisplayGiven = false;
+bool DisplayIsText = false;
+REGISTER DisplayNumber;
+int DisplayText[ DISPLAY_CHARS ];
+int DisplayTextLen = 0;
+int DisplayCodes[ DISPLAY_LEN ] = {  /* codes behind the text */
+    [ 11 ] = 0xCC, 0x44, 0xE0, 0x00, 0xFF
+};
+bool DisplayCodesGiven = false;
 
 /*
- *  File description from the header line of list602, -1 if not set
+ *  File description from # @key value, -1 if not set
  */
-int Partition = -1;           /* FX-602P memory partition, header byte 0 */
-int Steps502 = -1;            /* FX-501P/FX-502P program area */
-int Calculator = -1;          /* 602, 502 or 501 from # @nnn, -1 if not set */
+int Calculator = -1;          /* 602, 601, 502 or 501 */
+int FileType = -1;
+int Mode = -1;                /* MODE . nn */
 int Number = -1;              /* file number */
 int NameCodes[ NAME_LEN ];    /* file name */
 int NameLen = -1;
-bool HeaderLine = false;      /* header line of list602 found */
 
 int LineNo = 0;
 
@@ -338,77 +384,391 @@ bool step( const char *p, int len )
 
 
 /*
- *  Parse the header line of list602, e.g.
- *    Program file (type 40 0E), name "AB12XY", 512 steps, 22 registers
- *    Program file (FX-502P, type 23 B1), file number 123
+ *  Skip blanks
  */
-void headerLine( const char *line )
+const char *skipBlanks( const char *p )
 {
-    const char *p = line + strlen( "Program file (" );
-    unsigned int h0, h1;
+    while ( *p == ' ' || *p == '\t' ) {
+        ++p;
+    }
+    return p;
+}
 
-    HeaderLine = true;
-    if ( strncmp( p, "FX-50", 5 ) == 0 ) {
-        Steps502 = strncmp( p, "FX-501P,", 8 ) == 0 ? STEPS501 : STEPS502;
+
+/*
+ *  Parse count hex bytes in brackets, e.g. [00 01 00 00 00 00 00 01]
+ *  Returns the position behind the brackets
+ */
+const char *parseBytes( const char *p, int *bytes, int count )
+{
+    int i;
+
+    if ( *p++ != '[' ) {
+        error( "Bytes in brackets expected" );
     }
-    if ( ( p = strstr( p, "type " ) ) == NULL
-         || sscanf( p, "type %x %x", &h0, &h1 ) != 2 )
-    {
-        error( "File type expected" );
-    }
-    if ( Steps502 < 0 ) {
-        if ( h1 != TYPE_PROGRAM ) {
-            error( "Only program files are supported" );
+    for ( i = 0; i < count; ++i ) {
+        if ( i > 0 && *p++ != ' ' ) {
+            error( "%d bytes in brackets expected", count );
         }
-        Partition = (int) h0;
+        if ( ( bytes[ i ] = hexValue( p ) ) < 0 ) {
+            error( "%d bytes in brackets expected", count );
+        }
+        p += 2;
     }
-    if ( ( p = strstr( p, "), " ) ) == NULL ) {
-        error( "File name or number expected" );
+    if ( *p++ != ']' ) {
+        error( "%d bytes in brackets expected", count );
     }
-    p += 3;
-    if ( strncmp( p, "name ", 5 ) == 0 ) {
-        p += 5;
-        NameLen = alphaText( &p, NameCodes, NAME_LEN, false );
+    return p;
+}
+
+
+/*
+ *  Parse a number as printed by list602, e.g. -2.5 or 1.23456789E-45,
+ *  the exponent may also be written as e or without sign. With hex, the
+ *  hex digits of a synthetic number are allowed, e.g. 4.0C63D5681E-97,
+ *  and the exponent needs the sign.
+ *  Returns the position behind the number
+ */
+const char *parseNumber( const char *p, REGISTER *r, bool hex )
+{
+    char digits[ 32 ];
+    int n = 0, point = -1, exponent = 0;
+
+    r->negative = *p == '-';
+    if ( *p == '-' || *p == '+' ) {
+        ++p;
     }
-    else if ( strncmp( p, "file number ", 12 ) == 0 ) {
-        Number = atoi( p + 12 );
+    while ( true ) {
+        if ( *p == '.' && point < 0 ) {
+            point = n;
+        }
+        else if ( isdigit( (unsigned char) *p )
+                  || ( hex && *p >= 'A' && *p <= 'F'
+                       && !( *p == 'E' && ( p[ 1 ] == '+' || p[ 1 ] == '-' ) ) ) )
+        {
+            if ( n == (int) sizeof( digits ) - 1 ) {
+                error( "Too many digits" );
+            }
+            digits[ n++ ] = *p;
+        }
+        else {
+            break;
+        }
+        ++p;
     }
-    else if ( strncmp( p, "no name", 7 ) == 0 ) {
-        Number = 0;
+    if ( n == 0 ) {
+        error( "Number expected" );
+    }
+    if ( *p == 'E' || *p == 'e' ) {
+        char *end;
+
+        exponent = (int) strtol( p + 1, &end, 10 );
+        if ( end == p + 1 ) {
+            error( "Exponent expected" );
+        }
+        p = end;
+    }
+    if ( point < 0 ) {
+        point = n;
+    }
+
+    /*
+     *  Normalize: the first digit is not 0
+     */
+    digits[ n ] = '\0';
+    while ( n > 0 && digits[ 0 ] == '0' ) {
+        memmove( digits, digits + 1, n-- );
+        --point;
+    }
+    while ( n > 0 && digits[ n - 1 ] == '0' ) {
+        digits[ --n ] = '\0';
+    }
+    if ( n > 10 ) {
+        error( "More than 10 digits" );
+    }
+    r->exponent = exponent + point - 1;
+    if ( n == 0 ) {
+        r->negative = false;
+        r->exponent = 0;
+    }
+    else if ( r->exponent < -99 || r->exponent > 99 ) {
+        error( "Exponent out of range" );
+    }
+    memset( r->digits, '0', 10 );
+    memcpy( r->digits, digits, n );
+    r->digits[ 10 ] = '\0';
+    return p;
+}
+
+
+/*
+ *  Value of a hex digit
+ */
+int digitValue( char c )
+{
+    return isdigit( (unsigned char) c ) ? c - '0' : c - 'A' + 10;
+}
+
+
+/*
+ *  BCD code of a data register, see printNumber() in list602.c
+ *  sign is added to the hundreds digit of the exponent if negative
+ */
+void encodeRegister( const REGISTER *r, int sign, unsigned char *bytes )
+{
+    const char *d = r->digits;
+    int biased = r->exponent + 100;
+    int i;
+
+    if ( r->raw ) {
+        for ( i = 0; i < REG_LEN; ++i ) {
+            bytes[ i ] = (unsigned char) r->bytes[ i ];
+        }
+        return;
+    }
+    if ( d[ 0 ] == '0' ) {
+        memset( bytes, 0, REG_LEN );
+        return;
+    }
+    bytes[ 0 ] = (unsigned char) ( biased / 10 % 10 << 4 | biased % 10 );
+    bytes[ 1 ] = (unsigned char) ( biased / 100 + ( r->negative ? sign : 0 ) );
+    bytes[ 2 ] = (unsigned char) ( digitValue( d[ 9 ] ) << 4 );
+    for ( i = 0; i < 4; ++i ) {
+        bytes[ 3 + i ] = (unsigned char) ( digitValue( d[ 7 - 2 * i ] ) << 4
+                                           | digitValue( d[ 8 - 2 * i ] ) );
+    }
+    bytes[ 7 ] = (unsigned char) digitValue( d[ 0 ] );
+}
+
+
+/*
+ *  Parse the value of a register line: a number as printed by list602 or
+ *  8 bytes in brackets, optionally followed by "(synthetic)", which allows
+ *  hex digits, and the bytes in brackets of list602 -x, which take
+ *  precedence
+ */
+void parseValue( const char *p, REGISTER *r )
+{
+    p = skipBlanks( p );
+    r->raw = *p == '[';
+    if ( r->raw ) {
+        p = parseBytes( p, r->bytes, REG_LEN );
     }
     else {
-        error( "File name or number expected" );
+        p = skipBlanks( parseNumber( p, r, strstr( p, "(synthetic)" ) != NULL ) );
+        if ( strncmp( p, "(synthetic)", 11 ) == 0 ) {
+            p = skipBlanks( p + 11 );
+        }
+        if ( *p == '[' ) {
+            p = parseBytes( p, r->bytes, REG_LEN );
+            r->raw = true;
+        }
+    }
+    if ( *skipBlanks( p ) != '\0' ) {
+        error( "Unexpected \"%s\" behind the value", skipBlanks( p ) );
     }
 }
 
 
 /*
- *  Parse the calculator identifier "# @602", "# @502" or "# @501"
- *  Returns false if the line is no identifier
+ *  Parse the name of a data register in front of " = "
+ *  Returns false if the line is no register line
  */
-bool calculatorLine( const char *p )
+bool registerName602( const char *p, REGISTER *r )
 {
-    int calculator;
+    int len = fieldLength( p );
+    const char *q = skipBlanks( p + len );
+
+    if ( len > 0 && p[ len - 1 ] == '=' ) {
+        q = p + --len;
+    }
+    if ( *q != '=' ) {
+        return false;
+    }
+    r->index = r->group = r->position = 0;
+    if ( len == 4 && p[ 0 ] == '[' && p[ 3 ] == ']'
+         && isdigit( (unsigned char) p[ 1 ] ) && isdigit( (unsigned char) p[ 2 ] ) )
+    {
+        r->index = -1;
+        r->position = ( p[ 1 ] - '0' ) * 10 + p[ 2 ] - '0';
+        return true;
+    }
+    if ( p[ 0 ] != 'M' ) {
+        return false;
+    }
+    if ( len == 3 && p[ 1 ] == '.' ) {
+        /*
+         *  M.0..M.9, M.F of the FX-502P
+         */
+        r->group = 1;
+        if ( p[ 2 ] == 'F' ) {
+            r->index = 10;
+            return true;
+        }
+        r->index = p[ 2 ] - '0';
+        return isdigit( (unsigned char) p[ 2 ] );
+    }
+    if ( len == 2 && isdigit( (unsigned char) p[ 1 ] ) ) {
+        /*
+         *  M0..M9 of the FX-502P
+         */
+        r->index = p[ 1 ] - '0';
+        return true;
+    }
+    return len > 1 && parseRegister( p + 1, &r->group, &r->index ) == len - 1;
+}
+
+
+/*
+ *  Store a value only once
+ */
+void setOnce( int *value, int new_value, const char *key )
+{
+    if ( *value >= 0 && *value != new_value ) {
+        error( "@%s is set twice", key );
+    }
+    *value = new_value;
+}
+
+
+/*
+ *  Parse a line "# @key value"
+ *  Returns false if the line is no such line
+ */
+bool directive( const char *p )
+{
+    const char *key, *value;
+    int len, i;
 
     if ( *p++ != '#' ) {
         return false;
     }
-    while ( *p == ' ' || *p == '\t' ) {
-        ++p;
-    }
-    if ( *p != '@' ) {
+    p = skipBlanks( p );
+    if ( *p++ != '@' ) {
         return false;
     }
-    calculator = atoi( p + 1 );
-    if ( calculator != 602 && calculator != 502 && calculator != 501 ) {
-        error( "Unknown calculator \"%.*s\", use @602, @502 or @501",
-               fieldLength( p ), p );
+    key = p;
+    len = fieldLength( key );
+    value = skipBlanks( key + len );
+
+    if ( len == 10 && strncmp( key, "calculator", len ) == 0 ) {
+        int calculator = atoi( value );
+
+        if ( calculator != 602 && calculator != 601
+             && calculator != 502 && calculator != 501 )
+        {
+            error( "Unknown calculator \"%.*s\", use 602, 601, 502 or 501",
+                   fieldLength( value ), value );
+        }
+        setOnce( &Calculator, calculator, "calculator" );
     }
-    if ( Calculator > 0 && Calculator != calculator ) {
-        error( "Calculator @%d does not match @%d", calculator, Calculator );
+    else if ( len == 4 && strncmp( key, "file", len ) == 0 ) {
+        for ( i = 0; i < 4; ++i ) {
+            if ( (int) strlen( FileTypes[ i ] ) == fieldLength( value )
+                 && strncmp( value, FileTypes[ i ], fieldLength( value ) ) == 0 )
+            {
+                break;
+            }
+        }
+        if ( i == 4 ) {
+            error( "Unknown file type \"%.*s\", use program, data, all or display",
+                   fieldLength( value ), value );
+        }
+        setOnce( &FileType, i, "file" );
     }
-    Calculator = calculator;
+    else if ( len == 4 && strncmp( key, "name", len ) == 0 ) {
+        if ( NameLen >= 0 || Number >= 0 ) {
+            error( "@name or @number is set twice" );
+        }
+        NameLen = alphaText( &value, NameCodes, NAME_LEN, false );
+    }
+    else if ( len == 6 && strncmp( key, "number", len ) == 0 ) {
+        char *end;
+        long n = strtol( value, &end, 10 );
+
+        if ( end == value || n < 0 || n > 999 ) {
+            error( "Invalid file number \"%.*s\"", fieldLength( value ), value );
+        }
+        if ( NameLen >= 0 || Number >= 0 ) {
+            error( "@name or @number is set twice" );
+        }
+        Number = (int) n;
+    }
+    else if ( len == 4 && strncmp( key, "mode", len ) == 0 ) {
+        char *end;
+        long n = strtol( *value == '.' ? value + 1 : value, &end, 10 );
+
+        if ( n < 20 || n > 80 ) {
+            error( "Invalid memory partition \"%.*s\", use .20 .. .80",
+                   fieldLength( value ), value );
+        }
+        setOnce( &Mode, (int) n, "mode" );
+    }
+    else if ( len > 0 && strspn( key, "0123456789" ) == (size_t) len ) {
+        error( "Use \"# @calculator %.*s\"", len, key );
+    }
+    else {
+        error( "Unknown key \"@%.*s\"", len, key );
+    }
     return true;
+}
+
+
+/*
+ *  Parse the display line "Display = 55555" or "Display = "TEXT"",
+ *  optionally followed by the 16 codes of list602 -x
+ */
+void displayLine( const char *p )
+{
+    if ( DisplayGiven ) {
+        error( "Only one display line is allowed" );
+    }
+    DisplayGiven = true;
+    p = skipBlanks( skipBlanks( p ) + 1 );
+    if ( *p != '"' ) {
+        parseValue( p, &DisplayNumber );
+        return;
+    }
+    DisplayIsText = true;
+    DisplayTextLen = alphaText( &p, DisplayText, DISPLAY_CHARS, false );
+    p = skipBlanks( p );
+    if ( *p == '[' ) {
+        p = parseBytes( p, DisplayCodes, DISPLAY_LEN );
+        DisplayCodesGiven = true;
+    }
+    if ( *skipBlanks( p ) != '\0' ) {
+        error( "Unexpected \"%s\" behind the display", skipBlanks( p ) );
+    }
+}
+
+
+/*
+ *  Skip the hex codes in front of a step as listed by list602 -x:
+ *  a step number of 3 digits, 2 blanks and 3 columns "XX ", ".. " or
+ *  blanks followed by a blank
+ *  Returns the position of the step or p if there are no hex codes
+ */
+const char *skipHexCodes( const char *p )
+{
+    const char *q = p + strspn( p, "0123456789" );
+    int i;
+
+    if ( q - p != 3 || strncmp( q, "  ", 2 ) != 0 ) {
+        return p;
+    }
+    q += 2;
+    for ( i = 0; i < 3; ++i, q += 3 ) {
+        if ( strspn( q, "0123456789ABCDEF" ) < 2
+             && strncmp( q, "   ", 3 ) != 0
+             && !( i == 2 && strncmp( q, ".. ", 3 ) == 0 ) )
+        {
+            return p;
+        }
+        if ( q[ 2 ] != ' ' ) {
+            return p;
+        }
+    }
+    return *q == ' ' && q[ 1 ] != ' ' && q[ 1 ] != '\0' ? q + 1 : p;
 }
 
 
@@ -417,28 +777,37 @@ bool calculatorLine( const char *p )
  */
 void translateLine( char *line )
 {
-    const char *p = line;
+    const char *p = skipBlanks( line );
+    REGISTER r;
     bool first = true;
 
-    while ( *p == ' ' || *p == '\t' ) {
-        ++p;
-    }
-    if ( calculatorLine( p ) ) {
+    if ( directive( p ) ) {
         return;
     }
     if ( *p == '\0' || *p == '#' || strcmp( p, "No program" ) == 0
+         || strcmp( p, "Data" ) == 0 || strcmp( p, "L registers (parentheses)" ) == 0
          || strncmp( p, "End of ", 7 ) == 0 )
     {
         return;
     }
-    if ( strncmp( p, "Program file (", 14 ) == 0 ) {
-        headerLine( p );
+    if ( strstr( p, " file (" ) != NULL ) {
+        error( "Header line of an older list602, use # @ lines instead" );
+    }
+    if ( strncmp( p, "Display", 7 ) == 0 && *skipBlanks( p + 7 ) == '=' ) {
+        displayLine( p + 7 );
         return;
     }
-    if ( strstr( p, " file (" ) != NULL ) {
-        error( "Only program files are supported" );
+    if ( registerName602( p, &r ) ) {
+        if ( RegisterCount == MAX_REGISTERS ) {
+            error( "Too many registers" );
+        }
+        r.line = LineNo;
+        parseValue( strchr( p, '=' ) + 1, &r );
+        Registers[ RegisterCount++ ] = r;
+        return;
     }
 
+    p = skipHexCodes( p );
     while ( *p != '\0' ) {
         int len = fieldLength( p );
 
@@ -471,10 +840,7 @@ void translateLine( char *line )
             if ( Count == 0 || Code[ Count - 1 ] > 0x09 ) {
                 error( "The password must follow the program marker" );
             }
-            p += len;
-            while ( *p == ' ' || *p == '\t' ) {
-                ++p;
-            }
+            p = skipBlanks( p + len );
             n = alphaText( &p, codes, LINE_LEN, false );
             while ( n > 0 ) {
                 emit( codes[ --n ] );
@@ -488,10 +854,61 @@ void translateLine( char *line )
             error( "Unknown step \"%.*s\"", len, p );
         }
         first = false;
-        while ( *p == ' ' || *p == '\t' ) {
-            ++p;
+        p = skipBlanks( p );
+    }
+}
+
+
+/*
+ *  Number of data registers of the calculator
+ */
+int registerCount( void )
+{
+    switch ( Calculator ) {
+    case 602:
+        return Mode + Mode / 10;
+    case 502:
+        return REGISTERS502;
+    default:
+        return REGISTERS601;
+    }
+}
+
+
+/*
+ *  Position of a data register in the file
+ *  FX-602P: M00..M09, MF, M10..M19, M1F, ... up to the memory partition
+ *  FX-601P: M00..M09, MF, L registers [11]..[15]
+ *  FX-502P: MF, M9..M0, M.F, M.9..M.0
+ *  FX-501P: MF, M9..M0, L registers [11]..[15]
+ */
+int registerPosition( const REGISTER *r )
+{
+    int count = registerCount();
+    int pos = -1;
+
+    LineNo = r->line;
+    if ( r->index < 0 ) {
+        if ( Calculator == 601 || Calculator == 501 ) {
+            pos = r->position >= 11 && r->position < count ? r->position : -1;
         }
     }
+    else if ( Calculator == 602 ) {
+        if ( r->index < 10 ? r->group * 10 + r->index < Mode : r->group < Mode / 10 ) {
+            pos = r->group * 11 + r->index;
+        }
+    }
+    else if ( Calculator == 601 ) {
+        pos = r->group == 0 ? r->index : -1;
+    }
+    else if ( r->group <= ( Calculator == 502 ? 1 : 0 ) ) {
+        pos = r->group * 11 + 10 - r->index;
+    }
+    if ( pos < 0 ) {
+        error( "The register does not exist on the FX-%dP%s", Calculator,
+               Calculator == 602 ? " with this memory partition" : "" );
+    }
+    return pos;
 }
 
 
@@ -533,16 +950,43 @@ void setName602( unsigned char *h )
 
 
 /*
+ *  Encode the alpha display data, see decodeDisplay() in list602.c:
+ *  the text right aligned and padded with 0x0F, bit 7 of the characters
+ *  not stored but set for the sixth one, 5 more codes
+ */
+void encodeDisplay( unsigned char *p )
+{
+    int *c = DisplayCodes;
+    int i, k;
+
+    if ( !DisplayCodesGiven ) {
+        for ( i = 0; i < DISPLAY_CHARS; ++i ) {
+            int n = i - ( DISPLAY_CHARS - DisplayTextLen );
+
+            c[ i ] = n < 0 ? NAME_PADDING : DisplayText[ n ] & 0x7F;
+        }
+        c[ DISPLAY_FLAG ] |= 0x80;
+    }
+    for ( k = 0; k < 8; ++k ) {
+        p[ k ] = (unsigned char) ( ( c[ 14 - 2 * k ] & 0xF0 ) | c[ 15 - 2 * k ] >> 4 );
+        p[ k + 8 ] = (unsigned char) ( ( c[ 14 - 2 * k ] << 4 & 0xF0 )
+                                       | ( c[ 15 - 2 * k ] & 0x0F ) );
+    }
+}
+
+
+/*
  *  Main entry point
  */
 int main( int argc, char **argv )
 {
-    static unsigned char out[ MAX_CODES + 2 * HEADER_LEN + 2 * FOOTER_LEN ];
+    static unsigned char out[ MAX_CODES + MAX_REGISTERS * REG_LEN + 64 ];
     bool binary = false;
+    bool fx502;
     int lead_in = LEAD_IN_TIME;
     char *name = NULL;
     char *number = NULL;
-    int steps502 = -1;
+    int calculator = -1;
     char line[ LINE_LEN ];
     FILE *infp;
     int len = 0, i;
@@ -552,14 +996,14 @@ int main( int argc, char **argv )
         if ( strcmp( argv[ 1 ], "-b" ) == 0 ) {
             binary = true;
         }
+        if ( strncmp( argv[ 1 ], "-c", 2 ) == 0 ) {
+            calculator = atoi( argv[ 1 ] + 2 );
+        }
         if ( strncmp( argv[ 1 ], "-n", 2 ) == 0 ) {
             name = argv[ 1 ] + 2;
         }
         if ( strncmp( argv[ 1 ], "-f", 2 ) == 0 ) {
             number = argv[ 1 ] + 2;
-        }
-        if ( strncmp( argv[ 1 ], "-5", 2 ) == 0 ) {
-            steps502 = strcmp( argv[ 1 ], "-501" ) == 0 ? STEPS501 : STEPS502;
         }
         if ( strncmp( argv[ 1 ], "-l", 2 ) == 0 ) {
             lead_in = atoi( argv[ 1 ] + 2 );
@@ -571,12 +1015,11 @@ int main( int argc, char **argv )
     if ( argc <= 2 ) {
         printf( "usage: prg602 <options> infile outfile\n"
                 "         -b creates a binary file instead of a WAV file\n"
+                "         -c<calc> sets the calculator: 602, 601, 502 or 501\n"
                 "         -n<name> sets the file name (up to 6 characters, "
                            "FX-601P/FX-602P only)\n"
                 "         -f<number> sets the file number (0..999, "
                            "0 for none)\n"
-                "         -5 creates a file for the FX-502P, "
-                           "-501 for the FX-501P\n"
                 "         -l<time> length of the lead-in in tens of "
                            "a second (default %d)\n",
                 LEAD_IN_TIME );
@@ -596,35 +1039,28 @@ int main( int argc, char **argv )
     fclose( infp );
     LineNo = 0;
 
-    if ( Count == 0 ) {
-        error( "No program found" );
-    }
-
     /*
-     *  The calculator identifier must match the header line,
-     *  the options take precedence over both
+     *  The options take precedence over the listing
      */
-    if ( Calculator > 0 ) {
-        int steps = Calculator == 501 ? STEPS501 : Calculator == 502 ? STEPS502 : -1;
-
-        if ( HeaderLine && steps != Steps502 ) {
-            error( "Calculator @%d does not match the header line", Calculator );
+    if ( calculator > 0 ) {
+        if ( calculator != 602 && calculator != 601
+             && calculator != 502 && calculator != 501 )
+        {
+            error( "Unknown calculator %d, use 602, 601, 502 or 501", calculator );
         }
-        Steps502 = steps;
+        Calculator = calculator;
     }
-    if ( steps502 > 0 ) {
-        Steps502 = steps502;
+    if ( Calculator < 0 ) {
+        Calculator = 602;
     }
+    fx502 = Calculator == 502 || Calculator == 501;
     if ( name != NULL && number != NULL ) {
         error( "Either a name or a number can be set" );
     }
     if ( name != NULL ) {
         const char *p = name;
 
-        if ( Steps502 > 0 ) {
-            error( "Files of the FX-501P/FX-502P have no name, "
-                   "use -f to set the number" );
-        }
+        Number = -1;
         for ( NameLen = 0; *p != '\0'; ++NameLen ) {
             int prefix;
 
@@ -651,44 +1087,114 @@ int main( int argc, char **argv )
     if ( Number < 0 && NameLen < 0 ) {
         Number = 0;
     }
-    if ( Steps502 > 0 && NameLen >= 0 ) {
-        error( "Files of the FX-501P/FX-502P have no name" );
+    if ( fx502 && NameLen >= 0 ) {
+        error( "Files of the FX-501P/FX-502P have no name, use a number" );
+    }
+    if ( Mode >= 0 && Calculator != 602 ) {
+        error( "@mode is only used on the FX-602P" );
+    }
+    if ( Mode < 0 ) {
+        Mode = MODE;
     }
 
-    if ( Steps502 > 0 ) {
-        /*
-         *  FX-501P/FX-502P: 2 header bytes, the whole program area
-         */
-        if ( Count > Steps502 ) {
-            error( "The program has %d steps, the FX-50%cP only %d",
-                   Count, Steps502 == STEPS501 ? '1' : '2', Steps502 );
-        }
+    /*
+     *  The file type from the contents
+     */
+    if ( FileType < 0 ) {
+        FileType = DisplayGiven ? FILE_DISPLAY
+                 : RegisterCount == 0 ? FILE_PROGRAM
+                 : Count == 0 ? FILE_DATA : FILE_ALL;
+    }
+    if ( ( FileType == FILE_PROGRAM && Count == 0 )
+         || ( FileType == FILE_DISPLAY && !DisplayGiven ) )
+    {
+        error( "No %s found", FileType == FILE_PROGRAM ? "program" : "display" );
+    }
+    if ( ( FileType != FILE_PROGRAM && FileType != FILE_ALL && Count > 0 )
+         || ( ( FileType == FILE_PROGRAM || FileType == FILE_DISPLAY )
+              && RegisterCount > 0 )
+         || ( FileType != FILE_DISPLAY && DisplayGiven ) )
+    {
+        error( "The contents do not match the file type %s", FileTypes[ FileType ] );
+    }
+    if ( fx502 && ( FileType == FILE_ALL || FileType == FILE_DISPLAY ) ) {
+        error( "The FX-501P/FX-502P cannot save %s files", FileTypes[ FileType ] );
+    }
+
+    /*
+     *  Header
+     */
+    if ( fx502 ) {
         out[ len++ ] = (unsigned char) ( Number / 10 % 10 << 4 | Number % 10 );
-        out[ len++ ] = (unsigned char) ( TYPE502_PROGRAM << 4 | Number / 100 );
-        for ( i = 0; i < Steps502; ++i ) {
-            out[ len++ ] = (unsigned char) ( i < Count ? Code[ i ] : 0xFF );
-        }
+        out[ len++ ] = (unsigned char) ( ( FileType == FILE_PROGRAM
+                                           ? TYPE502_PROGRAM : TYPE502_DATA ) << 4
+                                         | Number / 100 );
     }
     else {
-        /*
-         *  FX-601P/FX-602P: 8 header bytes, the program ends with 0xFF
-         */
-        if ( Partition < 0 ) {
-            Partition = PARTITION;
-        }
-        if ( Count > Partition * 8 ) {
-            fprintf( stderr, "Warning: the program has %d steps, "
-                             "the memory partition only %d\n",
-                     Count, Partition * 8 );
-        }
-        out[ 0 ] = (unsigned char) Partition;
-        out[ 1 ] = TYPE_PROGRAM;
+        out[ 0 ] = (unsigned char) ( Calculator == 601 ? PARTITION601 : 84 - Mode );
+        out[ 1 ] = (unsigned char) ( FileType == FILE_PROGRAM ? TYPE_PROGRAM
+                                   : FileType == FILE_ALL ? TYPE_ALL : TYPE_DATA );
         setName602( out );
         len = HEADER_LEN;
+    }
+
+    /*
+     *  Program: FX-501P/FX-502P the whole program area, FX-601P/FX-602P
+     *  terminated by 0xFF, in an "all" file the whole program area
+     */
+    if ( FileType == FILE_PROGRAM || FileType == FILE_ALL ) {
+        int steps = Calculator == 501 ? STEPS501 : Calculator == 502 ? STEPS502
+                  : out[ 0 ] * 8;
+
+        if ( Count > steps ) {
+            fprintf( stderr, "%s: the program has %d steps, the program area "
+                             "of the FX-%dP only %d\n",
+                     fx502 || FileType == FILE_ALL ? "Error" : "Warning",
+                     Count, Calculator, steps );
+            if ( fx502 || FileType == FILE_ALL ) {
+                return 1;
+            }
+        }
         for ( i = 0; i < Count; ++i ) {
             out[ len++ ] = (unsigned char) Code[ i ];
         }
-        out[ len++ ] = 0xFF;
+        if ( fx502 || FileType == FILE_ALL ) {
+            for ( ; i < steps; ++i ) {
+                out[ len++ ] = 0xFF;
+            }
+        }
+        if ( !fx502 ) {
+            out[ len++ ] = 0xFF;
+        }
+    }
+
+    /*
+     *  Data registers, unlisted registers are 0
+     */
+    if ( FileType == FILE_DATA || FileType == FILE_ALL ) {
+        int count = registerCount();
+
+        memset( out + len, 0, count * REG_LEN );
+        for ( i = 0; i < RegisterCount; ++i ) {
+            encodeRegister( &Registers[ i ], fx502 ? 8 : 5,
+                            out + len + registerPosition( &Registers[ i ] ) * REG_LEN );
+        }
+        LineNo = 0;
+        len += count * REG_LEN;
+    }
+
+    /*
+     *  Display data: a number or the alpha text
+     */
+    if ( FileType == FILE_DISPLAY ) {
+        if ( DisplayIsText ) {
+            encodeDisplay( out + len );
+            len += DISPLAY_LEN;
+        }
+        else {
+            encodeRegister( &DisplayNumber, 5, out + len );
+            len += REG_LEN;
+        }
     }
     memset( out + len, 0xFF, FOOTER_LEN );
     len += FOOTER_LEN;
