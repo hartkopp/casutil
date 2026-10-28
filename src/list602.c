@@ -1132,7 +1132,9 @@ bool isHeader502( int pos, int end )
  *             FX-501P has only M0..M9 and MF, the 5 other registers are
  *             the L registers for parentheses, which the FA-2 uses for
  *             note codes in the music function. They are listed with
- *             their position in the file.
+ *             their position in the file. The statistic function of the
+ *             FX-501P uses M9 (n), M8 (sum x) and M7 (sum x^2), which are
+ *             cleared by SAC.
  *  The program codes are the same as on the FX-602P.
  *  Returns the position behind the file
  */
