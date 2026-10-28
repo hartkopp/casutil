@@ -3,9 +3,8 @@
  *
  *  This program displays the contents of a tape image saved by the
  *  FX-601P or FX-602P calculator through the FA-1 or FA-2 cassette
- *  interface. Program, data and "all" files are supported. Files saved
- *  by the FX-502P use the same format with a file number instead of a
- *  file name.
+ *  interface. Program, data and "all" files are supported. Files can
+ *  have a file number instead of a file name, as saved by the FX-502P.
  *
  *  Options:
  *    -b<skip> read BIN file (Default); skip <skip> garbage bytes
@@ -693,9 +692,9 @@ void listProgram( int start, int end )
 /*
  *  Decode the file name or number from the header
  *
- *  FX-502P file number: header[ 2 ] = last digit and 0xA,
- *                       header[ 3 ] = first and second digit,
- *                       header[ 4..7 ] = 0xFF
+ *  File number (FX-502P, FX-602P): header[ 2 ] = last digit and 0xA,
+ *                                  header[ 3 ] = first and second digit,
+ *                                  header[ 4..7 ] = 0xFF
  *  FX-602P file name: 6 alpha characters without bit 7, nibbles spread
  *                     over the bytes 2..7
  */
