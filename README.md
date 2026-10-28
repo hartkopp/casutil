@@ -184,8 +184,8 @@ standard output.
 - `list602`: lists program, data, "all" and display data files of the FX-601P/FX-602P
   with file name or number, password, memory partition (`MODE .`),
   program steps and the memory registers. Program and data files of the
-  FX-501P/FX-502P are listed as well, the data registers M0..M9 by name and
-  the others by their position in the file. Binary files are also accepted in the format of the
+  FX-501P/FX-502P are listed as well, with the data registers M0..M9, MF,
+  M.0..M.9 and M.F. Binary files are also accepted in the format of the
   FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
   and `√` in UTF-8, `-x` adds the hex codes of all steps. Codes without
   known meaning, e.g. from synthetic programming, are shown as `[XX]`,

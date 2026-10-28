@@ -1126,9 +1126,8 @@ bool isHeader502( int pos, int end )
  *  Program file: the whole program area, unused steps filled with 0xFF,
  *                followed by the footer
  *  Data file: 22 registers, followed by the footer. Each group of 11
- *             registers is stored in reverse order, the positions 10..1
- *             hold M0..M9. The other registers are not identified yet
- *             and are shown with their position in the file.
+ *             registers is stored in reverse order: MF, M9..M0, M.F,
+ *             M.9..M.0
  *  The program codes are the same as on the FX-602P.
  *  Returns the position behind the file
  */
@@ -1139,7 +1138,7 @@ int listFile502( int start, int end )
     int body = start + HEADER502_LEN;
     bool program = ( h1 >> 4 ) == TYPE502_PROGRAM;
     bool footer;
-    int after, n;
+    int after;
 
     printf( "%s file (FX-501P/FX-502P, type %02X %02X), ",
             program ? "Program" : "Data", h0, h1 );
@@ -1169,22 +1168,27 @@ int listFile502( int start, int end )
     else {
         int data_end = findRegisters( body, REGISTERS502, end, &after, &footer );
         int count = ( data_end - body ) / REG_LEN;
+        char reg[ 8 ];
+        int n;
 
+        /*
+         *  List in the order M0..M9, MF, M.0..M.9, M.F
+         */
         for ( n = 0; n < count; ++n ) {
-            /*
-             *  M0..M9 first, then the unknown registers
-             */
-            int pos = n < 10 ? 10 - n : n == 10 ? 0 : n;
+            int group = n / 11;
+            int index = n % 11;
+            int pos = group * 11 + 10 - index;
 
             if ( pos >= count ) {
                 continue;
             }
-            if ( n < 10 ) {
-                printf( "M%d    = ", n );
+            if ( index < 10 ) {
+                sprintf( reg, "%s%d", group ? "." : "", index );
             }
             else {
-                printf( "[%02d]  = ", pos );
+                sprintf( reg, "%sF", group ? "." : "" );
             }
+            printf( "M%-3s = ", reg );
             printRegister( body + pos * REG_LEN );
         }
     }
