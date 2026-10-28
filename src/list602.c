@@ -574,6 +574,8 @@ void listProgram( int start, int end )
         int c = Data[ i ];
 
         if ( c <= 0x09 ) {
+            int j;
+
             /*
              *  Start of a program, step numbers restart
              */
@@ -581,28 +583,25 @@ void listProgram( int start, int end )
             step = 0;
             ++i;
 
-            if ( first ) {
-                /*
-                 *  A password may follow the first program marker:
-                 *  alpha characters in reverse order, terminated by 0xEC
-                 */
-                int j;
-                for ( j = i; j < end && j < i + 9; ++j ) {
-                    if ( Data[ j ] == TOKEN_PASSWORD || Alpha[ Data[ j ] ].ascii == NULL ) {
-                        break;
-                    }
+            /*
+             *  A password may follow the program marker:
+             *  alpha characters in reverse order, terminated by 0xEC
+             */
+            for ( j = i; j < end && j < i + 9; ++j ) {
+                if ( Data[ j ] == TOKEN_PASSWORD || Alpha[ Data[ j ] ].ascii == NULL ) {
+                    break;
                 }
-                if ( j < end && j > i && Data[ j ] == TOKEN_PASSWORD ) {
-                    printf( "  Password \"" );
-                    while ( --j >= i ) {
-                        printAlpha( Data[ j ], 0 );
-                    }
-                    printf( "\"\n" );
-                    while ( Data[ i ] != TOKEN_PASSWORD ) {
-                        ++i;
-                    }
+            }
+            if ( j < end && j > i && Data[ j ] == TOKEN_PASSWORD ) {
+                printf( "  Password \"" );
+                while ( --j >= i ) {
+                    printAlpha( Data[ j ], 0 );
+                }
+                printf( "\"\n" );
+                while ( Data[ i ] != TOKEN_PASSWORD ) {
                     ++i;
                 }
+                ++i;
             }
             first = false;
             continue;
