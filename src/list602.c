@@ -34,6 +34,8 @@
 #define HEADER_LEN 8
 #define FOOTER_LEN 8          /* number of 0xFF bytes */
 #define REG_LEN    8          /* bytes per data register */
+#define DISPLAY_LEN   16      /* bytes of alpha display data */
+#define DISPLAY_CHARS 11      /* characters shown in the display */
 
 #define TOKEN_ALPHA     0x2B  /* starts and ends alpha mode */
 #define TOKEN_M20       0x2C  /* prefix for M20..M39 and FIX */
@@ -692,6 +694,52 @@ void listProgram( int start, int end )
 
 
 /*
+ *  Restore bit 7 of an alpha character: it is not stored in file names,
+ *  lower case letters and the codes 0xAA..0xAF appear as 0x10..0x2F
+ */
+int alphaBit7( int c )
+{
+    return c >= 0x10 && c <= 0x2F ? c | 0x80 : c;
+}
+
+
+/*
+ *  Decode the alpha display data of the calculator into c[ 16 ]:
+ *  byte k holds the high nibbles and byte k + 8 the low nibbles of
+ *  two characters, stored from the end. Bit 7 is set for some
+ *  characters, e.g. 0xB2 for 'C', it is ignored and restored as in
+ *  file names.
+ */
+void decodeDisplay( int *c, const int *p )
+{
+    int k;
+
+    for ( k = 0; k < 8; ++k ) {
+        c[ 14 - 2 * k ] = ( p[ k ] & 0xF0 ) | ( p[ k + 8 ] >> 4 );
+        c[ 15 - 2 * k ] = ( p[ k ] << 4 & 0xF0 ) | ( p[ k + 8 ] & 0x0F );
+    }
+}
+
+
+/*
+ *  Check for alpha display data of the calculator
+ */
+bool isDisplayText( const int *p )
+{
+    int c[ DISPLAY_LEN ];
+    int i;
+
+    decodeDisplay( c, p );
+    for ( i = 0; i < DISPLAY_CHARS; ++i ) {
+        if ( Alpha[ alphaBit7( c[ i ] & 0x7F ) ].ascii == NULL ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+/*
  *  Decode the file name or number from the header
  *
  *  File number (FX-502P, FX-602P): header[ 2 ] = last digit and 0xA,
@@ -730,14 +778,8 @@ void printName( const int *h )
     c[ 4 ] = ( h[ 5 ] & 0xF0 ) | ( h[ 2 ] >> 4 );
     c[ 5 ] = ( h[ 5 ] << 4 & 0xF0 ) | ( h[ 2 ] & 0x0F );
 
-    /*
-     *  Bit 7 of the characters is not stored, lower case letters and
-     *  the codes 0xAA..0xAF appear as 0x10..0x2F
-     */
     for ( i = 0; i < 6; ++i ) {
-        if ( c[ i ] >= 0x10 && c[ i ] <= 0x2F ) {
-            c[ i ] |= 0x80;
-        }
+        c[ i ] = alphaBit7( c[ i ] );
     }
 
     /*
@@ -844,6 +886,7 @@ int listFile( int start, int header_len, int end )
     bool data_footer = true;
     bool display_number = false;
     bool display_alpha = false;
+    bool display_text = false;
     const char *content;
     int i;
 
@@ -874,11 +917,22 @@ int listFile( int start, int header_len, int end )
         display_number = true;
         steps = 0;
     }
+    else if ( h[ 1 ] == TYPE_DATA && footer == body + DISPLAY_LEN
+              && registerEnd( body, footer ) != footer
+              && isDisplayText( Data + body ) )
+    {
+        /*
+         *  Display data (alpha) of the calculator
+         */
+        content = "Display data (alpha)";
+        display_text = true;
+        steps = 0;
+    }
     else if ( h[ 1 ] == TYPE_DATA && registerEnd( body, footer ) != footer
               && isAlphaText( body, footer ) )
     {
         /*
-         *  Display data (alpha), the text instead of registers
+         *  Display data (alpha) of the simulator, the text as alpha codes
          */
         content = "Display data (alpha)";
         display_alpha = true;
@@ -947,6 +1001,23 @@ int listFile( int start, int header_len, int end )
     if ( display_number ) {
         printf( "Display = " );
         printNumber( Data + body );
+        printf( "\n" );
+    }
+    else if ( display_text ) {
+        int c[ DISPLAY_LEN ];
+
+        decodeDisplay( c, Data + body );
+        printf( "Display = \"" );
+        for ( i = 0; i < DISPLAY_CHARS; ++i ) {
+            printAlpha( alphaBit7( c[ i ] & 0x7F ), 0 );
+        }
+        printf( "\"" );
+        if ( ShowHex ) {
+            for ( i = 0; i < DISPLAY_LEN; ++i ) {
+                printf( i ? " %02X" : "  [%02X", c[ i ] );
+            }
+            printf( "]" );
+        }
         printf( "\n" );
     }
     else if ( display_alpha ) {
