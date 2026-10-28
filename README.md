@@ -30,6 +30,7 @@ Windows CE do not apply anymore.
 | wave850  | Create a WAV file from a binary file (PB-700 and later, FP-200) |
 | waveX07  | Create a WAV file from a binary file (Canon X-07) |
 | wave602  | Create a WAV file from a binary file (FX-601P, FX-602P, FX-501P, FX-502P) |
+| prg602   | Create a WAV or binary file from a program listing (FX-601P, FX-602P, FX-501P, FX-502P) |
 | bas702   | Create a WAV, binary or ASCII encoded file from BASIC source (FX-702P) |
 | bas730   | Create a WAV, binary or ASCII encoded file from BASIC source (PB-100 series) |
 | bas850   | Create a WAV, binary, ASCII encoded or plain text file from BASIC source (PB-700 and later, FP-200) |
@@ -89,12 +90,12 @@ BASIC comparison sheet ([doc/basic-compare.html](doc/basic-compare.html)).
 - **FX-601P, FX-602P**: keystroke programmable calculators, 300 bit/s
   through the FA-1 or FA-2. Programs are stored as one byte per step.
   Files can have a file number (100..999) instead of a name.
-  Tools: `list602`, `wave602`.
+  Tools: `list602`, `wave602`, `prg602`.
 - **FX-501P, FX-502P**: same interface and program codes as the FX-602P,
   but a 2 byte header with type and file number, the whole program area
   (128 or 256 steps) or the data registers (16 or 22, the FX-501P saves
   its 5 registers for parentheses as well). The FX-602P loads these
-  files. Tools: `list602`, `wave602`.
+  files. Tools: `list602`, `wave602`, `prg602`.
 - **MD-100 floppy drive** with the PB-1000 and the PB-2000C: `md100`.
 - **Casio fx-8000G** graphics calculator with the FA-80 interface, 2400
   bit/s: `list8000`.
@@ -212,6 +213,30 @@ from a binary file with header, programs or registers and footer, e.g. from
 `wav2raw -b`. The format is detected from the header. `-n<name>` sets the
 file name (FX-601P/FX-602P only), `-f<number>` the file number (0 for
 none), which helps to repair a recording with a damaged header.
+
+`prg602` translates a program listing in the format of `list602` back into
+a WAV file (`-b`: binary file), so a program can be listed, edited and
+loaded into the calculator again:
+
+- `P0`..`P9` start a program, the steps follow separated by blanks or one
+  per line. Step numbers of 3 digits in front are ignored.
+- Steps are written as listed by `list602`, in ASCII or UTF-8, e.g.
+  `MR1F`, `FIX2`, `x^2` or `x²`. Names of steps are also accepted in
+  other case.
+- Alpha text is written in quotes with the escapes of `list602`, e.g.
+  `"r=\ar05"`, codes without name as `[XX]`, a password as
+  `Password "AB"` behind the program marker.
+- The header line of `list602` sets the name or number, the memory
+  partition and the format (FX-601P/FX-602P or FX-501P/FX-502P). Without
+  it, `-n<name>`, `-f<number>` and `-5` (FX-502P) or `-501` (FX-501P) set
+  them; the options take precedence.
+- Empty lines and lines starting with `#` are ignored. Only program files
+  are supported so far, the hex codes of `list602 -x` are not accepted.
+
+```
+list602 -w statpc.wav > statpc.txt
+prg602 statpc.txt statpc2.wav
+```
 
 The BASIC translators `bas702`, `bas730`, `bas850` and `basX07` read a
 source file, which may come from a list utility or an editor, and create a
