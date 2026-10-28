@@ -253,7 +253,9 @@ programs:
   are only accepted in numbers marked as `(synthetic)`. Registers which
   are not listed are 0.
 - Display data are written as `Display = 55555` or `Display = "TEXT"`,
-  optionally followed by the 16 codes of `list602 -x`.
+  optionally followed by the 16 codes of `list602 -x`. The FX-602P loads
+  such files, but shows 0 afterwards, also for its own recordings, so they
+  are probably only useful for printing from the tape (FA-2 in PRT/MT).
 - Other lines starting with `#`, empty lines and the headings of `list602`
   are ignored.
 
