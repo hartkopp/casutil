@@ -208,7 +208,8 @@ const NAME Alpha[ 256 ] = {
  *  which is selected together with the number of registers by MODE . 20
  *  to MODE . 80, e.g. 0x40 for 512 steps and 22 registers (MODE . 20) or
  *  0x21 for 264 steps and 56 registers M00..M50, MF..M4F (MODE . 51).
- *  Display data files use 0x41 (numeric) or 0x42 (alpha) instead.
+ *  Display data files have the type 0x40 like data files, but contain
+ *  only the displayed number as one register or the alpha text.
  */
 #define TYPE_PROGRAM 0x0E
 #define TYPE_ALL     0x1F
@@ -835,6 +836,7 @@ int listFile( int start, int header_len, int end )
     int data = after, data_end = after;
     int steps = 0, registers = 0;
     bool data_footer = true;
+    bool display_number = false;
     bool display_alpha = false;
     const char *content;
     int i;
@@ -856,19 +858,21 @@ int listFile( int start, int header_len, int end )
         registers = numbered + numbered / 10;
     }
 
-    if ( h[ 1 ] == TYPE_DATA && h[ 0 ] == 0x41 ) {
-        /*
-         *  Display data (numeric), the format is a guess
-         */
-        content = "Display data (numeric)";
-        steps = 0;
-    }
-    else if ( h[ 1 ] == TYPE_DATA && ( h[ 0 ] == 0x42
-              || ( registerEnd( body, footer ) != footer
-                   && isAlphaText( body, footer ) ) ) )
+    if ( h[ 1 ] == TYPE_DATA && footer == body + REG_LEN
+         && ( isRegister( Data + body ) || isSyntheticRegister( Data + body ) ) )
     {
         /*
-         *  Display data (alpha), also written with type 40 40
+         *  Display data (numeric), a single register
+         */
+        content = "Display data (numeric)";
+        display_number = true;
+        steps = 0;
+    }
+    else if ( h[ 1 ] == TYPE_DATA && registerEnd( body, footer ) != footer
+              && isAlphaText( body, footer ) )
+    {
+        /*
+         *  Display data (alpha), the text instead of registers
          */
         content = "Display data (alpha)";
         display_alpha = true;
@@ -934,12 +938,10 @@ int listFile( int start, int header_len, int end )
     }
     printf( "\n\n" );
 
-    if ( h[ 1 ] == TYPE_DATA && h[ 0 ] == 0x41 ) {
-        if ( isRegister( Data + body ) ) {
-            printf( "Display = " );
-            printNumber( Data + body );
-            printf( "\n" );
-        }
+    if ( display_number ) {
+        printf( "Display = " );
+        printNumber( Data + body );
+        printf( "\n" );
     }
     else if ( display_alpha ) {
         printf( "Display = \"" );

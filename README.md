@@ -178,7 +178,7 @@ standard output.
   files (`-g`) and exports CAS files for FA-121 (`-cas`) or CAT files for
   FA-122..124 (`-cat`).
 - `list74`: `-r` writes a PGM file for the TI PC interface.
-- `list602`: lists program, data and "all" files of the FX-601P/FX-602P
+- `list602`: lists program, data, "all" and display data files of the FX-601P/FX-602P
   with file name or number, password, memory partition (`MODE .`),
   program steps and the memory registers. Binary files are also accepted in the format of the
   FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
