@@ -585,7 +585,8 @@ void listProgram( int start, int end )
 
             /*
              *  A password may follow the program marker:
-             *  alpha characters in reverse order, terminated by 0xEC
+             *  alpha characters in reverse order, terminated by 0xEC.
+             *  Each program has its own password.
              */
             for ( j = i; j < end && j < i + 9; ++j ) {
                 if ( Data[ j ] == TOKEN_PASSWORD || Alpha[ Data[ j ] ].ascii == NULL ) {
