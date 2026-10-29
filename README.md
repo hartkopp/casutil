@@ -275,8 +275,11 @@ programs:
   write the program area of 256 or 128 steps. `# @rawheader` replaces the
   header created from the other lines, which still describe the contents,
   `-n` and `-f` take precedence. An unknown key is an error.
-- `P0`..`P9` start a program, the steps follow one per line. Step numbers
-  of 3 digits in front (`list602 -s`), which are only for information, and
+- `*** P0`..`*** P9` start a program, as in the listings of the printer
+  FP-10. `list602` writes one step per line and the number of steps behind
+  each program as comment, e.g. `# 25 steps`. `prg602` also accepts several
+  steps in a line separated by blanks. Step numbers of 3 digits at the
+  beginning of a line (`list602 -s`), which are only for information, and
   the hex codes of `list602 -x` are ignored.
 - Steps are written as listed by `list602`, in ASCII or UTF-8, e.g.
   `MR1F`, `FIX2`, `x^2` or `x²`, the registers also as on the
@@ -298,9 +301,9 @@ programs:
   optionally followed by the bytes or the 16 codes in brackets. The FX-602P loads
   such files, but shows 0 afterwards, also for its own recordings, so they
   are probably only useful for printing from the tape (FA-2 in PRT/MT).
-- `#` starts a comment at the beginning of a line or behind the step,
+- `#` starts a comment at the beginning of a line or behind a step,
   e.g. `LBL0  # main loop`, also behind `RAN#` or `"123 #"`. Empty lines
-  and the headings of `list602` are ignored.
+  and the headings `***` of `list602` are ignored.
 
 ```
 list602 -w statpc.wav > statpc.prg

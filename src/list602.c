@@ -416,7 +416,7 @@ void listParentheses( int start, int first, int count )
 {
     int n;
 
-    printf( "\nL registers (parentheses)\n\n" );
+    printf( "\n*** L registers\n\n" );
     for ( n = first; n < count; ++n ) {
         printf( "[%02d] = ", n );
         printRegister( start + n * REG_LEN );
@@ -448,7 +448,9 @@ void stepStart( int step, int start, int length )
 {
     int i;
 
-    printf( ShowSteps ? "  %03d  " : "  ", step );
+    if ( ShowSteps ) {
+        printf( "%03d  ", step );
+    }
     if ( ShowHex ) {
         for ( i = 0; i < 3; ++i ) {
             if ( i < length && i < 2 ) {
@@ -468,6 +470,8 @@ void stepStart( int step, int start, int length )
 
 /*
  *  List the program steps in Data[ start ] .. Data[ end - 1 ]
+ *  Each program starts with "*** Pn" and ends with the number of steps as
+ *  comment, like the listing of the printer FP-10.
  */
 void listProgram( int start, int end )
 {
@@ -481,7 +485,7 @@ void listProgram( int start, int end )
          *  Steps outside of any program, e.g. in front of P0 in the
          *  program area of an "all" file
          */
-        printf( "No program\n" );
+        printf( "*** No program\n" );
         first = false;
     }
 
@@ -494,7 +498,10 @@ void listProgram( int start, int end )
             /*
              *  Start of a program, step numbers restart
              */
-            printf( "%sP%d\n", first ? "" : "\n", c );
+            if ( !first ) {
+                printf( "# %d steps\n\n", step );
+            }
+            printf( "*** P%d\n", c );
             step = 0;
             ++i;
 
@@ -509,7 +516,7 @@ void listProgram( int start, int end )
                 }
             }
             if ( j == i + PASSWORD_LEN && j < end && Data[ j ] == TOKEN_PASSWORD ) {
-                printf( "  Password \"" );
+                printf( "Password \"" );
                 while ( --j >= i ) {
                     printAlpha( Data[ j ], 0 );
                 }
@@ -612,6 +619,13 @@ void listProgram( int start, int end )
             printf( "[%02X]\n", c );
         }
         ++i;
+    }
+
+    /*
+     *  Number of steps of the last program, as printed by the FP-10
+     */
+    if ( start < end ) {
+        printf( "# %d steps\n", step );
     }
 }
 
@@ -1117,7 +1131,7 @@ int listFile( int start, int header_len, int end )
         }
         if ( data_end > data ) {
             if ( body < i ) {
-                printf( "\nData\n\n" );
+                printf( "\n*** Data\n\n" );
             }
             if ( fx601 ) {
                 listRegisters( data, data + 11 * REG_LEN );
