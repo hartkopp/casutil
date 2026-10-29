@@ -110,6 +110,30 @@ The PB machines (PB-700 series, PB-1000, FP-200) use `LGT` for the base 10
 logarithm and `LOG` for the natural logarithm, all other machines use `LOG`
 and `LN`. The `-l` options of the list and bas utilities convert between both.
 
+### FX-501P/FX-502P and FX-601P/FX-602P
+
+The calculators share the program codes, the FX-602P has a two-digit
+register address, so M.0..M.9 of the FX-502P are M10..M19 there. INV MODE
+is ALPHA on the FX-601P/FX-602P and NOP on the FX-501P/FX-502P. The FX-602P
+manual (page 65) lists which calculator loads the files of which:
+
+| Saved by | Loaded by | Condition |
+|----------|-----------|-----------|
+| FX-501P | FX-501P, FX-502P, FX-601P | none |
+| FX-501P | FX-602P | program area of at least 128 steps |
+| FX-502P | FX-502P | none |
+| FX-502P | FX-501P | programs up to 128 steps, data up to 11 registers |
+| FX-502P | FX-601P | programs up to 128 steps, data up to 11 registers, else "OP Error" |
+| FX-502P | FX-602P | 256 steps and at least 20 registers assigned |
+| FX-601P | FX-601P | none |
+| FX-601P | FX-602P | `MODE . 68`: M00..M67 and 128 steps |
+| FX-602P | FX-602P | the memory partition used for saving |
+| FX-602P | FX-601P | programs up to 128 steps, data up to 11 registers, else "OP Error"; programs and data saved with `MODE . 68`, ending with "OP Error" |
+
+No other path is possible, an FX-601P/FX-602P file cannot be loaded into
+an FX-501P/FX-502P. `prg602` creates the files for any of these
+calculators from a listing (`# @calculator`).
+
 
 ## Handling tape recordings
 
@@ -386,7 +410,8 @@ documentation.
 - Piotr Piatek, who inspired much of this work and documented the Casio
   hardware, interfaces and the MD-100: <https://www.pisi.com.pl/piotr433/>
 - FX-602P and FX-603P token codes, file format and simulator by Martin
-  Krischik: <https://fx-602p.krischik.com>
+  Krischik: <https://fx-602p.krischik.com>, manuals of the FX-602P,
+  FX-502P, FA-1 and FA-2: <https://fx-602p.krischik.com/fx-602p/manuals/>
 - Ledudu's site about Casio calculators and pocket computers:
   <http://www.ledudu.com/pockets.asp>
 - rskey.org about programmable calculators: <http://www.rskey.org>
