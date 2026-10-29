@@ -562,9 +562,10 @@ void listProgram( int start, int end )
             }
 
             /*
-             *  No closing quote if the closing 0x2B is missing
+             *  \FF instead of the closing quote, if the program ends
+             *  without the closing 0x2B
              */
-            printf( i < end ? "\"\n" : "\n" );
+            printf( i < end ? "\"\n" : "\\FF\n" );
             if ( i < end ) {
                 /*
                  *  Closing 0x2B

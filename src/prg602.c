@@ -90,6 +90,7 @@ typedef struct _register {
 int Code[ MAX_CODES ];        /* program codes */
 int CodeLine[ MAX_CODES ];    /* line of each code */
 int Count = 0;
+bool ProgramEnd = false;      /* \FF found, the end of the program */
 REGISTER Registers[ MAX_REGISTERS ];
 int RegisterCount = 0;
 bool DisplayGiven = false;
@@ -142,6 +143,13 @@ void emit( int c )
 {
     if ( Count >= MAX_CODES ) {
         error( "Program too long" );
+    }
+    if ( ProgramEnd ) {
+        error( "No step is allowed after \\FF, the end of the program" );
+    }
+    if ( c == 0xFF ) {
+        error( "0xFF ends the program, it is only allowed as \\FF at the end "
+               "of an alpha text" );
     }
     CodeLine[ Count ] = LineNo;
     Code[ Count++ ] = c;
@@ -272,7 +280,7 @@ int alphaCode( const char **pp, int *prefix )
     int c, group, index, n;
 
     *prefix = 0;
-    if ( strncasecmp( p, "\\AR", 3 ) == 0 && p[ 3 ] == 'L' && isdigit( (unsigned char) p[ 4 ] ) ) {
+    if ( strncmp( p, "\\AR", 3 ) == 0 && p[ 3 ] == 'L' && isdigit( (unsigned char) p[ 4 ] ) ) {
         /*
          *  Registers for parentheses L2..L11
          */
@@ -285,7 +293,7 @@ int alphaCode( const char **pp, int *prefix )
             return n <= 6 ? 0x6B + n - 2 : 0xBB + n - 7;
         }
     }
-    if ( strncasecmp( p, "\\AR", 3 ) == 0
+    if ( strncmp( p, "\\AR", 3 ) == 0
          && ( n = parseRegister( p + 3, &group, &index ) ) > 0 )
     {
         *prefix = registerPrefix( group );
@@ -316,8 +324,8 @@ int alphaCode( const char **pp, int *prefix )
 /*
  *  Parse an alpha text in quotes at *pp into codes[], advance *pp
  *  With registers, prefixes and register displays are allowed.
- *  With closed, the closing quote may be missing at the end of the line,
- *  *closed is set to false then.
+ *  With closed, the text may end with \FF instead of the closing quote,
+ *  the end of a program in alpha mode, *closed is set to false then.
  *  Returns the number of codes
  */
 int alphaText( const char **pp, int *codes, int max, bool registers, bool *closed )
@@ -333,9 +341,9 @@ int alphaText( const char **pp, int *codes, int max, bool registers, bool *close
         const char *start = p;
         int prefix, c;
 
-        if ( *p == '\0' && closed != NULL ) {
+        if ( closed != NULL && strcmp( p, "\\FF" ) == 0 ) {
             *closed = false;
-            *pp = p;
+            *pp = p + 3;
             return n;
         }
         if ( *p == '\0' ) {
@@ -344,7 +352,7 @@ int alphaText( const char **pp, int *codes, int max, bool registers, bool *close
         if ( ( c = alphaCode( &p, &prefix ) ) < 0 ) {
             error( "Unknown alpha character \"%.*s\"", fieldLength( start ), start );
         }
-        if ( !registers && strncasecmp( start, "\\AR", 3 ) == 0 ) {
+        if ( !registers && strncmp( start, "\\AR", 3 ) == 0 ) {
             error( "Register display not allowed here" );
         }
         if ( n + ( prefix != 0 ? 2 : 1 ) > max ) {
@@ -896,10 +904,7 @@ void translateLine( char *line )
             if ( closed ) {
                 emit( TOKEN_ALPHA );
             }
-            else {
-                fprintf( stderr, "Warning: line %d: no closing quote, the alpha "
-                                 "text is not terminated\n", LineNo );
-            }
+            ProgramEnd = !closed;
         }
         else if ( first && len >= 3 && strspn( p, "0123456789" ) == (size_t) len ) {
             /*

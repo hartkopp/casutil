@@ -279,12 +279,11 @@ programs:
   FX-501P/FX-502P, e.g. `MR5`, `MR.5` or `M+.F`. Names of steps are also
   accepted in other case.
 - Alpha text is written in quotes with the escapes of `list602`, e.g.
-  `"r=\AR05"` (INV AR 0 5 on the keyboard, also `\ar05`), the registers
+  `"r=\AR05"` (INV AR 0 5 on the keyboard), the registers
   for parentheses as `\ARL2`..`\ARL11` (synthetic), codes without name as
   `[XX]`, a password of 4 characters as `Password "AB12"` behind the
-  program marker. Alpha text without closing quote at the end of the line
-  is not terminated, as listed by `list602` for a program ending in alpha
-  mode; `prg602` warns about it.
+  program marker. A program ending in alpha mode without the closing
+  0x2B is listed with `\FF` instead of the closing quote, e.g. `"OFFEN\FF`.
 - Data registers are written as `M05 = 1.5`, `M1F = -2.5e-12`, on the
   FX-501P/FX-502P also as `M5`, `M.5`, `M.F`, the L registers of the
   FX-501P/FX-601P as `[11]`..`[15]`. A value is a number, 8 bytes in
