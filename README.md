@@ -250,6 +250,9 @@ from a binary file with header, programs or registers and footer, e.g. from
 file name (FX-601P/FX-602P only), `-f<number>` the file number (0 for
 none), which helps to repair a recording with a damaged header.
 
+See [doc/fx602.md](doc/fx602.md) for recipes, an example and the tables
+of all program codes.
+
 `prg602` translates a listing in the format of `list602` back into a WAV
 file (`-b`: binary file), so programs and data can be listed, edited and
 loaded into the calculator again. The text describes the file completely,
@@ -415,6 +418,8 @@ documentation.
 - [doc/basic-compare.html](doc/basic-compare.html): comparison of the BASIC
   dialects of Casio, Sharp, HP, TI, Canon and Epson pocket computers
 - [md100/md100.txt](md100/md100.txt): MD-100 floppy disks under Linux
+- [doc/fx602.md](doc/fx602.md): FX-601P/FX-602P and FX-501P/FX-502P: files,
+  recipes, the listing format and the tables of all program codes
 - character set and token tables for the FX-850P, PB-700 and Canon X-07 in
   [doc](doc)
 
