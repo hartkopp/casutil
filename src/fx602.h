@@ -34,6 +34,7 @@
 #define TOKEN_M20       0x2C  /* prefix for M20..M39 and FIX */
 #define TOKEN_M80       0x2F  /* prefix for M80..M99 (synthetic) */
 #define TOKEN_PASSWORD  0xEC  /* terminates the password */
+#define PASSWORD_LEN    4     /* characters of a password */
 
 /*
  *  Names in ASCII and UTF-8
@@ -50,7 +51,7 @@ typedef struct _name {
  *  Names in parentheses are synthetic codes, which are displayed like the
  *  command named, but act differently (E. Welker, Sedezimal-Code, 1982):
  *  (SAC) like xD, (SAC:) like xDEL, (GRA) like ISZ, (10^x) halts like BST,
- *  (e^x) halts on a key pressed, SA executes the next step and halts.
+ *  (e^x) halts on a key pressed, (SA) executes the next step and halts.
  *  NULL marks unknown codes and 0xEA, 0xEB, which both display "Error".
  */
 const NAME Tokens[ 256 ] = {
@@ -136,7 +137,7 @@ const NAME Tokens[ 256 ] = {
     [ 0xFB ] = { "NOP" },
     [ 0xFC ] = { "(10^x)", "(10\xCB\xA3)" },
     [ 0xFD ] = { "(e^x)", "(e\xCB\xA3)" },
-    [ 0xFE ] = { "SA" },      /* synthetic, a programmed FST */
+    [ 0xFE ] = { "(SA)" },    /* synthetic, a programmed FST */
 };
 
 /*

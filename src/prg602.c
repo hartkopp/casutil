@@ -26,7 +26,7 @@
  *    steps       one or more per line, separated by blanks, in ASCII or
  *                UTF-8 as listed by list602, e.g. LBL0, MR1F, FIX3, x^2
  *                or x². A step number of 3 digits in front is ignored.
- *    "text"      alpha text with the escapes of list602, e.g. \PI, \ar05
+ *    "text"      alpha text with the escapes of list602, e.g. \PI, \AR05
  *    [XX]        a code without name, e.g. from synthetic programming
  *    Password "text" directly after the program marker
  *    M05 = 1.5   a data register: a number, 8 bytes in brackets, or a
@@ -232,7 +232,7 @@ int memoryCode( int op, int group, int index )
 
 
 /*
- *  Code of an alpha register display (\arXX),
+ *  Code of an alpha register display (\ARXX),
  *  the inverse of alphaRegister() in list602.c
  */
 int alphaRegisterCode( int group, int index )
@@ -272,7 +272,20 @@ int alphaCode( const char **pp, int *prefix )
     int c, group, index, n;
 
     *prefix = 0;
-    if ( strncmp( p, "\\ar", 3 ) == 0
+    if ( strncasecmp( p, "\\AR", 3 ) == 0 && p[ 3 ] == 'L' && isdigit( (unsigned char) p[ 4 ] ) ) {
+        /*
+         *  Registers for parentheses L2..L11
+         */
+        n = isdigit( (unsigned char) p[ 5 ] ) ? ( p[ 4 ] - '0' ) * 10 + p[ 5 ] - '0' : -1;
+        if ( n < 10 || n > 11 ) {
+            n = p[ 4 ] - '0';
+        }
+        if ( n >= 2 ) {
+            *pp = p + ( n >= 10 ? 6 : 5 );
+            return n <= 6 ? 0x6B + n - 2 : 0xBB + n - 7;
+        }
+    }
+    if ( strncasecmp( p, "\\AR", 3 ) == 0
          && ( n = parseRegister( p + 3, &group, &index ) ) > 0 )
     {
         *prefix = registerPrefix( group );
@@ -331,7 +344,7 @@ int alphaText( const char **pp, int *codes, int max, bool registers, bool *close
         if ( ( c = alphaCode( &p, &prefix ) ) < 0 ) {
             error( "Unknown alpha character \"%.*s\"", fieldLength( start ), start );
         }
-        if ( !registers && strncmp( start, "\\ar", 3 ) == 0 ) {
+        if ( !registers && strncasecmp( start, "\\AR", 3 ) == 0 ) {
             error( "Register display not allowed here" );
         }
         if ( n + ( prefix != 0 ? 2 : 1 ) > max ) {
@@ -906,6 +919,9 @@ void translateLine( char *line )
             }
             p = skipBlanks( p + len );
             n = alphaText( &p, codes, LINE_LEN, false, NULL );
+            if ( n != PASSWORD_LEN ) {
+                error( "The password must have %d characters", PASSWORD_LEN );
+            }
             while ( n > 0 ) {
                 emit( codes[ --n ] );
             }

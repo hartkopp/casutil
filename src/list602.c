@@ -107,7 +107,19 @@ bool memoryName( char *buffer, int token, int offset )
 
 
 /*
- *  Name of an alpha register display (arXX) including the prefix offset
+ *  Check for the display of a memory register in alpha text, which may
+ *  follow a prefix for the registers M20..M99
+ */
+bool isMemoryDisplay( int code )
+{
+    return ( code >= 0x60 && code <= 0x69 ) || ( code >= 0xB0 && code <= 0xB9 )
+        || code == 0xF1 || code == 0xF6;
+}
+
+
+/*
+ *  Name of an alpha register display (\ARXX, INV AR on the keyboard)
+ *  including the prefix offset
  *  Returns false if the code isn't an alpha register display
  */
 bool alphaRegister( char *buffer, int code, int offset )
@@ -123,10 +135,18 @@ bool alphaRegister( char *buffer, int code, int offset )
     else if ( code == 0xF1 || code == 0xF6 ) {
         registerName( reg, offset / 10 + ( code == 0xF6 ? 1 : 0 ), 10 );
     }
+    else if ( offset == 0 && ( ( code >= 0x6B && code <= 0x6F )
+                               || ( code >= 0xBB && code <= 0xBF ) ) )
+    {
+        /*
+         *  Registers for parentheses L2..L11 (synthetic), L0 is x and L1 is y
+         */
+        sprintf( reg, "L%d", ( code & 0x0F ) - 0x0B + ( code >= 0xB0 ? 7 : 2 ) );
+    }
     else {
         return false;
     }
-    sprintf( buffer, "\\ar%s", reg );
+    sprintf( buffer, "\\AR%s", reg );
     return true;
 }
 
@@ -477,16 +497,16 @@ void listProgram( int start, int end )
             ++i;
 
             /*
-             *  A password may follow the program marker:
-             *  alpha characters in reverse order, terminated by 0xEC.
+             *  A password may follow the program marker: 4 alpha
+             *  characters in reverse order, terminated by 0xEC.
              *  Each program has its own password.
              */
-            for ( j = i; j < end && j < i + 9; ++j ) {
-                if ( Data[ j ] == TOKEN_PASSWORD || Alpha[ Data[ j ] ].ascii == NULL ) {
+            for ( j = i; j < end && j < i + PASSWORD_LEN; ++j ) {
+                if ( Alpha[ Data[ j ] ].ascii == NULL ) {
                     break;
                 }
             }
-            if ( j < end && j > i && Data[ j ] == TOKEN_PASSWORD ) {
+            if ( j == i + PASSWORD_LEN && j < end && Data[ j ] == TOKEN_PASSWORD ) {
                 printf( "  Password \"" );
                 while ( --j >= i ) {
                     printAlpha( Data[ j ], 0 );
@@ -505,7 +525,7 @@ void listProgram( int start, int end )
         if ( c == TOKEN_ALPHA ) {
             /*
              *  Alpha text up to the closing 0x2B, prefixes select
-             *  the register groups of arXX.
+             *  the register groups of \ARXX.
              *  Some programs contain a single 0x2B followed by normal
              *  program steps. It is listed as code [2B] if the text up to
              *  the next 0x2B contains program markers, labels or HLT,
@@ -530,7 +550,7 @@ void listProgram( int start, int end )
                  *  A prefix without a register display is shown as \XX
                  */
                 if ( Data[ i ] >= TOKEN_M20 && Data[ i ] <= TOKEN_M80
-                     && i + 1 < j && alphaRegister( buffer, Data[ i + 1 ], 0 ) )
+                     && i + 1 < j && isMemoryDisplay( Data[ i + 1 ] ) )
                 {
                     offset = ( Data[ i ] - TOKEN_M20 + 1 ) * 20;
                     ++step;
