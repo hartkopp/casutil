@@ -23,9 +23,9 @@
  *      # @rawheader XX XX .., all bytes of the header, which replace the
  *        header created from the lines above
  *    P0..P9      start a program
- *    steps       one or more per line, separated by blanks, in ASCII or
- *                UTF-8 as listed by list602, e.g. LBL0, MR1F, FIX3, x^2
- *                or x². A step number of 3 digits in front is ignored.
+ *    steps       one per line in ASCII or UTF-8 as listed by list602,
+ *                e.g. LBL0, MR1F, FIX3, x^2 or x². A step number of
+ *                3 digits and the hex codes of list602 -x are ignored.
  *    "text"      alpha text with the escapes of list602, e.g. \PI, \AR05
  *    [XX]        a code without name, e.g. from synthetic programming
  *    Password "text" directly after the program marker
@@ -36,9 +36,8 @@
  *                L registers of the FX-501P/FX-601P.
  *    Display = 55555 or Display = "TEXT", optionally followed by the
  *                16 codes as listed by list602 -x
- *    Other lines starting with #, empty lines and the headings of list602
- *    are ignored. The hex codes of program steps (list602 -x) are not
- *    accepted.
+ *    # starts a comment at the beginning of a line or behind the step,
+ *    empty lines and the headings of list602 are ignored.
  */
 #include <stdio.h>
 #include <string.h>
@@ -341,7 +340,9 @@ int alphaText( const char **pp, int *codes, int max, bool registers, bool *close
         const char *start = p;
         int prefix, c;
 
-        if ( closed != NULL && strcmp( p, "\\FF" ) == 0 ) {
+        if ( closed != NULL && strncmp( p, "\\FF", 3 ) == 0
+             && ( p[ 3 ] == '\0' || p[ 3 ] == ' ' || p[ 3 ] == '\t' || p[ 3 ] == '#' ) )
+        {
             *closed = false;
             *pp = p + 3;
             return n;
@@ -851,96 +852,170 @@ const char *skipHexCodes( const char *p )
 
 
 /*
- *  Translate a line of the listing
+ *  Cut a comment, which starts with # at the beginning or behind a blank
+ *  outside of alpha text, and the blanks at the end of the line
+ */
+void stripComment( char *s )
+{
+    bool quoted = false;
+    char *p;
+
+    for ( p = s; *p != '\0'; ++p ) {
+        if ( quoted && *p == '\\' && p[ 1 ] != '\0' ) {
+            /*
+             *  An escape, \FF ends a program in alpha mode
+             */
+            if ( strncmp( p, "\\FF", 3 ) == 0
+                 && ( p[ 3 ] == '\0' || p[ 3 ] == ' ' || p[ 3 ] == '\t' ) )
+            {
+                quoted = false;
+            }
+            ++p;
+        }
+        else if ( *p == '"' ) {
+            quoted = !quoted;
+        }
+        else if ( !quoted && *p == '#' && ( p == s || p[ -1 ] == ' ' || p[ -1 ] == '\t' ) ) {
+            *p = '\0';
+            break;
+        }
+    }
+    for ( p = s + strlen( s ); p > s && ( p[ -1 ] == ' ' || p[ -1 ] == '\t' ); --p )
+        ;
+    *p = '\0';
+}
+
+
+/*
+ *  Skip a step number of 3 digits and the hex codes of list602 -x
+ */
+const char *skipStepNumber( const char *p )
+{
+    const char *q = skipHexCodes( p );
+    size_t len = strspn( p, "0123456789" );
+
+    if ( q != p ) {
+        return q;
+    }
+    if ( len >= 3 && ( p[ len ] == ' ' || p[ len ] == '\t' ) ) {
+        return skipBlanks( p + len );
+    }
+    return p;
+}
+
+
+/*
+ *  Check that only a comment follows a step
+ */
+void checkRest( const char *p )
+{
+    p = skipBlanks( p );
+    if ( *p != '\0' && *p != '#' ) {
+        error( "Only one step per line is allowed, found \"%s\", a comment "
+               "starts with #", p );
+    }
+}
+
+
+/*
+ *  Translate a line of the listing: one step, alpha text, a password,
+ *  a register or the display, optionally followed by a comment
  */
 void translateLine( char *line )
 {
     const char *p = skipBlanks( line );
+    char text[ LINE_LEN ];
     REGISTER r;
-    bool first = true;
+    int len, i;
 
-    if ( directive( p ) ) {
+    if ( *p == '#' ) {
+        /*
+         *  Comment or # @key value, which may be followed by a comment
+         */
+        strcpy( text, p );
+        stripComment( text + 1 );
+        directive( text );
         return;
     }
-    if ( *p == '\0' || *p == '#' || strcmp( p, "No program" ) == 0
-         || strcmp( p, "Data" ) == 0 || strcmp( p, "L registers (parentheses)" ) == 0
-         || strncmp( p, "End of ", 7 ) == 0 )
+
+    /*
+     *  Headings of list602, registers and the display without comment
+     */
+    strcpy( text, p );
+    stripComment( text );
+    if ( text[ 0 ] == '\0' || strcmp( text, "No program" ) == 0
+         || strcmp( text, "Data" ) == 0 || strcmp( text, "L registers (parentheses)" ) == 0
+         || strncmp( text, "End of ", 7 ) == 0 )
     {
         return;
     }
-    if ( strstr( p, " file (" ) != NULL ) {
+    if ( strstr( text, " file (" ) != NULL ) {
         error( "Header line of an older list602, use # @ lines instead" );
     }
-    if ( strncmp( p, "Display", 7 ) == 0 && *skipBlanks( p + 7 ) == '=' ) {
-        displayLine( p + 7 );
+    if ( strncmp( text, "Display", 7 ) == 0 && *skipBlanks( text + 7 ) == '=' ) {
+        displayLine( text + 7 );
         return;
     }
-    if ( registerName602( p, &r ) ) {
+    if ( registerName602( text, &r ) ) {
         if ( RegisterCount == MAX_REGISTERS ) {
             error( "Too many registers" );
         }
         r.line = LineNo;
-        parseValue( strchr( p, '=' ) + 1, &r );
+        parseValue( strchr( text, '=' ) + 1, &r );
         Registers[ RegisterCount++ ] = r;
         return;
     }
 
-    p = skipHexCodes( p );
-    while ( *p != '\0' ) {
-        int len = fieldLength( p );
+    /*
+     *  A program step: the step is read first, a comment may follow
+     */
+    p = skipStepNumber( p );
+    if ( *p == '"' ) {
+        /*
+         *  Alpha text
+         */
+        int codes[ LINE_LEN ];
+        bool closed;
+        int n = alphaText( &p, codes, LINE_LEN, true, &closed );
 
-        if ( *p == '"' ) {
-            /*
-             *  Alpha text
-             */
-            int codes[ LINE_LEN ];
-            bool closed;
-            int n = alphaText( &p, codes, LINE_LEN, true, &closed ), i;
-
+        checkRest( p );
+        emit( TOKEN_ALPHA );
+        for ( i = 0; i < n; ++i ) {
+            emit( codes[ i ] );
+        }
+        if ( closed ) {
             emit( TOKEN_ALPHA );
-            for ( i = 0; i < n; ++i ) {
-                emit( codes[ i ] );
-            }
-            if ( closed ) {
-                emit( TOKEN_ALPHA );
-            }
-            ProgramEnd = !closed;
         }
-        else if ( first && len >= 3 && strspn( p, "0123456789" ) == (size_t) len ) {
-            /*
-             *  Step number
-             */
-            p += len;
-        }
-        else if ( len == 8 && strncmp( p, "Password", 8 ) == 0 ) {
-            /*
-             *  Password in reverse order behind the program marker
-             */
-            int codes[ LINE_LEN ];
-            int n;
-
-            if ( Count == 0 || Code[ Count - 1 ] > 0x09 ) {
-                error( "The password must follow the program marker" );
-            }
-            p = skipBlanks( p + len );
-            n = alphaText( &p, codes, LINE_LEN, false, NULL );
-            if ( n != PASSWORD_LEN ) {
-                error( "The password must have %d characters", PASSWORD_LEN );
-            }
-            while ( n > 0 ) {
-                emit( codes[ --n ] );
-            }
-            emit( TOKEN_PASSWORD );
-        }
-        else if ( step( p, len ) ) {
-            p += len;
-        }
-        else {
-            error( "Unknown step \"%.*s\"", len, p );
-        }
-        first = false;
-        p = skipBlanks( p );
+        ProgramEnd = !closed;
+        return;
     }
+    if ( strncmp( p, "Password", 8 ) == 0 && *skipBlanks( p + 8 ) == '"' ) {
+        /*
+         *  Password in reverse order behind the program marker
+         */
+        int codes[ LINE_LEN ];
+        int n;
+
+        if ( Count == 0 || Code[ Count - 1 ] > 0x09 ) {
+            error( "The password must follow the program marker" );
+        }
+        p = skipBlanks( p + 8 );
+        n = alphaText( &p, codes, LINE_LEN, false, NULL );
+        if ( n != PASSWORD_LEN ) {
+            error( "The password must have %d characters", PASSWORD_LEN );
+        }
+        checkRest( p );
+        while ( n > 0 ) {
+            emit( codes[ --n ] );
+        }
+        emit( TOKEN_PASSWORD );
+        return;
+    }
+    len = fieldLength( p );
+    if ( !step( p, len ) ) {
+        error( "Unknown step \"%.*s\"", len, p );
+    }
+    checkRest( p + len );
 }
 
 
