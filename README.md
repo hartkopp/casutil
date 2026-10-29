@@ -426,6 +426,8 @@ documentation.
 - [md100/md100.txt](md100/md100.txt): MD-100 floppy disks under Linux
 - [doc/fx602.md](doc/fx602.md): FX-601P/FX-602P and FX-501P/FX-502P: files,
   recipes, the listing format and the tables of all program codes
+- [doc/lander.prg](doc/lander.prg): the moon landing game "Lander" for the
+  FX-602P as example listing for `prg602`
 - character set and token tables for the FX-850P, PB-700 and Canon X-07 in
   [doc](doc)
 

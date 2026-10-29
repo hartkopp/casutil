@@ -470,12 +470,18 @@ void stepStart( int step, int start, int length )
 
 /*
  *  Print the number of steps of a program including the marker, as by the
- *  printer FP-10, the bytes of a password are counted as well
+ *  printer FP-10, the bytes of a password are counted as well. A program
+ *  ending in alpha mode without the closing 0x2B is marked.
  */
-void printSteps( int steps, int pass )
+void printSteps( int steps, int pass, bool broken )
 {
+    const char *end = broken ? ", unexpected ending" : "";
+
     if ( pass > 0 ) {
-        printf( "# %d steps (%d pass + %d program)\n", pass + steps, pass, steps );
+        printf( "# %d steps (%d pass + %d program%s)\n", pass + steps, pass, steps, end );
+    }
+    else if ( broken ) {
+        printf( "# %d steps (unexpected ending)\n", steps );
     }
     else {
         printf( "# %d steps\n", steps );
@@ -496,6 +502,7 @@ void listProgram( int start, int end )
     int step = 0;
     int marker = 0;           /* 1 within a program */
     int pass = 0;             /* bytes of the password */
+    bool broken = false;      /* end in alpha mode without 0x2B */
     bool first = true;
 
     if ( start < end && Data[ start ] > 0x09 ) {
@@ -517,7 +524,7 @@ void listProgram( int start, int end )
              *  Start of a program, step numbers restart
              */
             if ( !first ) {
-                printSteps( step + marker, pass );
+                printSteps( step + marker, pass, false );
                 printf( "\n" );
             }
             printf( "*** P%d\n", c );
@@ -597,6 +604,7 @@ void listProgram( int start, int end )
              *  without the closing 0x2B
              */
             printf( i < end ? "\"\n" : "\\FF\n" );
+            broken = i >= end;
             if ( i < end ) {
                 /*
                  *  Closing 0x2B
@@ -647,7 +655,7 @@ void listProgram( int start, int end )
      *  Number of steps of the last program, as printed by the FP-10
      */
     if ( start < end ) {
-        printSteps( step + marker, pass );
+        printSteps( step + marker, pass, broken );
     }
 }
 
