@@ -124,6 +124,8 @@ const NAME Tokens[ 256 ] = {
     [ 0xEE ] = { "cosh-1", "cosh\xE2\x81\xBB\xC2\xB9" },
     [ 0xEF ] = { "tanh-1", "tanh\xE2\x81\xBB\xC2\xB9" },
     [ 0xFA ] = { "AC" },
+    /* INV MODE on the FX-501P/FX-502P, ALPHA (0x2B) on the FX-601P/FX-602P */
+    [ 0xFB ] = { "NOP" },
 };
 
 /*

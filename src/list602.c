@@ -54,6 +54,7 @@
  */
 bool Utf8 = false;
 bool ShowHex = false;
+bool Names502 = false;        /* register names of the FX-501P/FX-502P */
 
 /*
  *  Input buffer, filled by the reading routines
@@ -91,7 +92,15 @@ bool memoryName( char *buffer, int token, int offset )
     else {
         return false;
     }
-    registerName( reg, group, index );
+    if ( Names502 && group <= 1 ) {
+        /*
+         *  M0..M9, MF, M.0..M.9, M.F
+         */
+        sprintf( reg, "%s%c", group ? "." : "", index < 10 ? '0' + index : 'F' );
+    }
+    else {
+        registerName( reg, group, index );
+    }
     sprintf( buffer, "%s%s", NAME_OF( MemoryOps[ op ] ), reg );
     return true;
 }
@@ -1058,7 +1067,9 @@ int listFile502( int start, int end )
     printf( "\n" );
 
     if ( program && body < prog_end ) {
+        Names502 = true;
         listProgram( body, prog_end );
+        Names502 = false;
     }
     if ( !program ) {
         char reg[ 8 ];

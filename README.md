@@ -112,10 +112,14 @@ and `LN`. The `-l` options of the list and bas utilities convert between both.
 
 ### FX-501P/FX-502P and FX-601P/FX-602P
 
-The calculators share the program codes, the FX-602P has a two-digit
-register address, so M.0..M.9 of the FX-502P are M10..M19 there. INV MODE
-is ALPHA on the FX-601P/FX-602P and NOP on the FX-501P/FX-502P. The FX-602P
-manual (page 65) lists which calculator loads the files of which:
+The calculators share the program codes, as a test program typed on an
+FX-502P shows. The FX-602P has a two-digit register address, so M.0..M.9
+and M.F of the FX-502P are M10..M19 and M1F there; `list602` shows the
+names of the FX-502P in its programs. INV MODE is ALPHA (0x2B) on the
+FX-601P/FX-602P and NOP (0xFB) on the FX-501P/FX-502P. The FX-501P/FX-502P
+have no alpha text, password and FIX, which use the codes 0x2B..0x2F and
+0xEC, `prg602` warns about them. The FX-602P manual (page 65) lists which
+calculator loads the files of which:
 
 | Saved by | Loaded by | Condition |
 |----------|-----------|-----------|
@@ -265,8 +269,9 @@ programs:
   per line. Step numbers of 3 digits in front and the hex codes of
   `list602 -x` are ignored.
 - Steps are written as listed by `list602`, in ASCII or UTF-8, e.g.
-  `MR1F`, `FIX2`, `x^2` or `x²`. Names of steps are also accepted in
-  other case.
+  `MR1F`, `FIX2`, `x^2` or `x²`, the registers also as on the
+  FX-501P/FX-502P, e.g. `MR5`, `MR.5` or `M+.F`. Names of steps are also
+  accepted in other case.
 - Alpha text is written in quotes with the escapes of `list602`, e.g.
   `"r=\ar05"`, codes without name as `[XX]`, a password as
   `Password "AB"` behind the program marker.

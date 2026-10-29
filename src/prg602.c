@@ -88,6 +88,7 @@ typedef struct _register {
  *  Contents of the listing
  */
 int Code[ MAX_CODES ];        /* program codes */
+int CodeLine[ MAX_CODES ];    /* line of each code */
 int Count = 0;
 REGISTER Registers[ MAX_REGISTERS ];
 int RegisterCount = 0;
@@ -140,6 +141,7 @@ void emit( int c )
     if ( Count >= MAX_CODES ) {
         error( "Program too long" );
     }
+    CodeLine[ Count ] = LineNo;
     Code[ Count++ ] = c;
 }
 
@@ -178,6 +180,27 @@ int parseRegister( const char *p, int *group, int *index )
     if ( isdigit( (unsigned char) p[ 0 ] ) && isdigit( (unsigned char) p[ 1 ] ) ) {
         *group = p[ 0 ] - '0';
         *index = p[ 1 ] - '0';
+        return 2;
+    }
+    return 0;
+}
+
+
+/*
+ *  Parse a register name of the FX-501P/FX-502P: n, .n or .F
+ *  Sets the group (1 for .n) and the index (0..9, 10 for F)
+ *  Returns the number of characters, 0 if there is no register name
+ */
+int parseRegister502( const char *p, int *group, int *index )
+{
+    if ( isdigit( (unsigned char) p[ 0 ] ) ) {
+        *group = 0;
+        *index = p[ 0 ] - '0';
+        return 1;
+    }
+    if ( p[ 0 ] == '.' && ( isdigit( (unsigned char) p[ 1 ] ) || p[ 1 ] == 'F' ) ) {
+        *group = 1;
+        *index = p[ 1 ] == 'F' ? 10 : p[ 1 ] - '0';
         return 2;
     }
     return 0;
@@ -358,7 +381,8 @@ bool step( const char *p, int len )
     }
 
     /*
-     *  Memory operations with register name, e.g. MR05, M+1F, Min25
+     *  Memory operations with register name, e.g. MR05, M+1F, Min25,
+     *  or as on the FX-501P/FX-502P, e.g. MR5, M+.F
      */
     for ( op = 0; op < 5; ++op ) {
         const char *names[ 2 ] = { MemoryOps[ op ].ascii, MemoryOps[ op ].utf8 };
@@ -368,8 +392,10 @@ bool step( const char *p, int len )
             int l = names[ i ] != NULL ? (int) strlen( names[ i ] ) : 0;
 
             if ( l > 0 && l < len && strncasecmp( p, names[ i ], l ) == 0
-                 && ( n = parseRegister( p + l, &group, &index ) ) > 0
-                 && l + n == len )
+                 && ( ( ( n = parseRegister( p + l, &group, &index ) ) > 0
+                        && l + n == len )
+                      || ( ( n = parseRegister502( p + l, &group, &index ) ) > 0
+                           && l + n == len ) ) )
             {
                 if ( registerPrefix( group ) != 0 ) {
                     emit( registerPrefix( group ) );
@@ -1086,6 +1112,26 @@ int main( int argc, char **argv )
     }
     if ( Number < 0 && NameLen < 0 ) {
         Number = 0;
+    }
+    /*
+     *  The FX-501P/FX-502P have no alpha text, password, FIX and registers
+     *  from M20 on. Warn only, as such codes may be synthetic.
+     */
+    if ( fx502 ) {
+        int n = 0, line = 0;
+
+        for ( i = 0; i < Count; ++i ) {
+            if ( ( Code[ i ] >= TOKEN_ALPHA && Code[ i ] <= TOKEN_M80 )
+                 || Code[ i ] == TOKEN_PASSWORD )
+            {
+                line = n++ == 0 ? CodeLine[ i ] : line;
+            }
+        }
+        if ( n > 0 ) {
+            fprintf( stderr, "Warning: line %d: %d codes of alpha text, password, "
+                             "FIX or registers from M20 on, which the FX-%dP "
+                             "does not know\n", line, n, Calculator );
+        }
     }
     if ( fx502 && NameLen >= 0 ) {
         error( "Files of the FX-501P/FX-502P have no name, use a number" );
