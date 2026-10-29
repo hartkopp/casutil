@@ -12,7 +12,8 @@
  *    -w       read WAV file
  *    -i       ignore bytes with parity or framing errors
  *    -u       use UTF-8 characters instead of ASCII
- *    -x       show the hex codes of all steps
+ *    -s       show the step numbers
+ *    -x       show the hex codes of all steps and the step numbers
  *
  *  Each file starts with comment lines describing the file for prg602:
  *    # @calculator 602, 601, 502 or 501
@@ -54,6 +55,7 @@
  */
 bool Utf8 = false;
 bool ShowHex = false;
+bool ShowSteps = false;
 bool File502 = false;         /* file of the FX-501P/FX-502P */
 
 /*
@@ -440,13 +442,13 @@ void listRegisters( int start, int end )
 
 
 /*
- *  Print the step number and the hex codes of a step
+ *  Print the step number and the hex codes of a step, if selected
  */
 void stepStart( int step, int start, int length )
 {
     int i;
 
-    printf( "  %03d  ", step );
+    printf( ShowSteps ? "  %03d  " : "  ", step );
     if ( ShowHex ) {
         for ( i = 0; i < 3; ++i ) {
             if ( i < length && i < 2 ) {
@@ -1370,8 +1372,11 @@ int main( int argc, char **argv )
         if ( strncmp( argv[ 1 ], "-u", 2 ) == 0 ) {
             Utf8 = true;
         }
+        if ( strncmp( argv[ 1 ], "-s", 2 ) == 0 ) {
+            ShowSteps = true;
+        }
         if ( strncmp( argv[ 1 ], "-x", 2 ) == 0 ) {
-            ShowHex = true;
+            ShowHex = ShowSteps = true;
         }
         ++argv;
         --argc;
@@ -1384,7 +1389,9 @@ int main( int argc, char **argv )
                            "<skip> is an optional offset\n"
                 "         -i ignores bytes with parity or framing errors\n"
                 "         -u uses UTF-8 characters instead of ASCII\n"
-                "         -x shows the hex codes of all steps\n" );
+                "         -s shows the step numbers\n"
+                "         -x shows the hex codes of all steps and the "
+                           "step numbers\n" );
         return 2;
     }
 

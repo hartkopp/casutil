@@ -220,8 +220,9 @@ standard output.
   FX-501P/FX-502P are listed as well, with the data registers M0..M9, MF
   and on the FX-502P M.0..M.9, M.F. Binary files are also accepted in the format of the
   FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
-  and `√` in UTF-8, `-x` adds the hex codes of all steps. Codes without
-  known meaning, e.g. from synthetic programming, are shown as `[XX]`,
+  and `√` in UTF-8, `-s` adds the step numbers as shown by the calculator
+  in WRT mode, `-x` the hex codes of all steps and the step numbers. Codes
+  without known meaning, e.g. from synthetic programming, are shown as `[XX]`,
   unknown alpha characters as `\XX`. Each file starts with the comment
   lines `# @calculator`, `# @file`, `# @name` or `# @number` and
   `# @mode`, which describe the file for `prg602`, and `# @rawheader` if
@@ -272,8 +273,8 @@ programs:
   header created from the other lines, which still describe the contents,
   `-n` and `-f` take precedence. An unknown key is an error.
 - `P0`..`P9` start a program, the steps follow separated by blanks or one
-  per line. Step numbers of 3 digits in front and the hex codes of
-  `list602 -x` are ignored.
+  per line. Step numbers of 3 digits in front (`list602 -s`), which are only
+  for information, and the hex codes of `list602 -x` are ignored.
 - Steps are written as listed by `list602`, in ASCII or UTF-8, e.g.
   `MR1F`, `FIX2`, `x^2` or `x²`, the registers also as on the
   FX-501P/FX-502P, e.g. `MR5`, `MR.5` or `M+.F`. Names of steps are also
