@@ -45,7 +45,9 @@ typedef struct _name {
  *  Standard plane
  *  The memory operations 0x50..0xE9 (columns 0..9) and 0xF0..0xF9
  *  are handled by memoryName() and are left out here.
- *  NULL marks unknown or synthetic codes.
+ *  Names in parentheses are synthetic codes, which act like the command
+ *  named. NULL marks unknown codes and the synthetic codes without unique
+ *  name: 0x3B and 0x9B act like SAC, 0xEA and 0xEB cause an error.
  */
 const NAME Tokens[ 256 ] = {
     /* 0x00..0x09: program markers P0..P9, handled separately */
@@ -88,6 +90,7 @@ const NAME Tokens[ 256 ] = {
     [ 0x5E ] = { "=" },        [ 0x5F ] = { "EXE" },
     [ 0x6B ] = { "DSZ" },      [ 0x6C ] = { "x=0" },
     [ 0x6D ] = { "x=F" },      [ 0x6E ] = { "RAN#" },
+    [ 0x6A ] = { "(GRA)" },
     [ 0x6F ] = { "PI", "\xCF\x80" },
     [ 0x7A ] = { "ISZ" },      [ 0x7B ] = { "x>=0", "x\xE2\x89\xA5" "0" },
     [ 0x7C ] = { "x>=F", "x\xE2\x89\xA5" "F" },
@@ -126,6 +129,9 @@ const NAME Tokens[ 256 ] = {
     [ 0xFA ] = { "AC" },
     /* INV MODE on the FX-501P/FX-502P, ALPHA (0x2B) on the FX-601P/FX-602P */
     [ 0xFB ] = { "NOP" },
+    [ 0xFC ] = { "(10^x)", "(10\xCB\xA3)" },
+    [ 0xFD ] = { "(e^x)", "(e\xCB\xA3)" },
+    [ 0xFE ] = { "SA" },      /* synthetic, a programmed FST */
 };
 
 /*
