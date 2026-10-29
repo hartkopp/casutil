@@ -469,6 +469,21 @@ void stepStart( int step, int start, int length )
 
 
 /*
+ *  Print the number of steps of a program including the marker, as by the
+ *  printer FP-10, the bytes of a password are counted as well
+ */
+void printSteps( int steps, int pass )
+{
+    if ( pass > 0 ) {
+        printf( "# %d steps (%d pass + %d program)\n", pass + steps, pass, steps );
+    }
+    else {
+        printf( "# %d steps\n", steps );
+    }
+}
+
+
+/*
  *  List the program steps in Data[ start ] .. Data[ end - 1 ]
  *  Each program starts with "*** Pn" and ends with the number of steps as
  *  comment, like the listing of the printer FP-10, which counts the program
@@ -480,6 +495,7 @@ void listProgram( int start, int end )
     int i = start;
     int step = 0;
     int marker = 0;           /* 1 within a program */
+    int pass = 0;             /* bytes of the password */
     bool first = true;
 
     if ( start < end && Data[ start ] > 0x09 ) {
@@ -501,10 +517,12 @@ void listProgram( int start, int end )
              *  Start of a program, step numbers restart
              */
             if ( !first ) {
-                printf( "# %d steps\n\n", step + marker );
+                printSteps( step + marker, pass );
+                printf( "\n" );
             }
             printf( "*** P%d\n", c );
             marker = 1;
+            pass = 0;
             step = 0;
             ++i;
 
@@ -519,6 +537,7 @@ void listProgram( int start, int end )
                 }
             }
             if ( j == i + PASSWORD_LEN && j < end && Data[ j ] == TOKEN_PASSWORD ) {
+                pass = PASSWORD_LEN + 1;
                 printf( "Password \"" );
                 while ( --j >= i ) {
                     printAlpha( Data[ j ], 0 );
@@ -628,7 +647,7 @@ void listProgram( int start, int end )
      *  Number of steps of the last program, as printed by the FP-10
      */
     if ( start < end ) {
-        printf( "# %d steps\n", step + marker );
+        printSteps( step + marker, pass );
     }
 }
 

@@ -278,7 +278,8 @@ programs:
 - `*** P0`..`*** P9` start a program, as in the listings of the printer
   FP-10. `list602` writes one step per line and the number of steps behind
   each program as comment, e.g. `# 170 steps`, which includes the program
-  marker as with the FP-10. `prg602` also accepts several steps in a line
+  marker and a password as with the FP-10, e.g.
+  `# 31 steps (5 pass + 26 program)`. `prg602` also accepts several steps in a line
   separated by blanks. Step numbers of 3 digits at the beginning of a line
   (`list602 -s`), which are only for information, and the hex codes of
   `list602 -x` are ignored.
