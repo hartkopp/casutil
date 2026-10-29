@@ -247,7 +247,7 @@ bool isAlphaText( int start, int end )
     for ( i = start; i < end; ++i ) {
         if ( Alpha[ Data[ i ] ].ascii == NULL
              && !alphaRegister( buffer, Data[ i ], 0 )
-             && !( Data[ i ] >= TOKEN_M20 && Data[ i ] <= TOKEN_M80 ) )
+             && !( Data[ i ] >= TOKEN_F1 && Data[ i ] <= TOKEN_F4 ) )
         {
             return false;
         }
@@ -549,10 +549,10 @@ void listProgram( int start, int end )
                 /*
                  *  A prefix without a register display is shown as \XX
                  */
-                if ( Data[ i ] >= TOKEN_M20 && Data[ i ] <= TOKEN_M80
+                if ( Data[ i ] >= TOKEN_F1 && Data[ i ] <= TOKEN_F4
                      && i + 1 < j && isMemoryDisplay( Data[ i + 1 ] ) )
                 {
-                    offset = ( Data[ i ] - TOKEN_M20 + 1 ) * 20;
+                    offset = ( Data[ i ] - TOKEN_F1 + 1 ) * 20;
                     ++step;
                     continue;
                 }
@@ -576,11 +576,11 @@ void listProgram( int start, int end )
             continue;
         }
 
-        if ( c >= TOKEN_M20 && c <= TOKEN_M80 && i + 1 < end ) {
+        if ( c >= TOKEN_F1 && c <= TOKEN_F4 && i + 1 < end ) {
             /*
              *  Prefix for the registers M20..M99 or FIX
              */
-            int offset = ( c - TOKEN_M20 + 1 ) * 20;
+            int offset = ( c - TOKEN_F1 + 1 ) * 20;
             int t = Data[ i + 1 ];
 
             if ( memoryName( buffer, t, offset ) ) {
@@ -590,7 +590,7 @@ void listProgram( int start, int end )
                 i += 2;
                 continue;
             }
-            if ( c == TOKEN_M20 && t >= 0x10 && t <= 0x19 ) {
+            if ( c == TOKEN_F1 && t >= 0x10 && t <= 0x19 ) {
                 stepStart( ++step, i, 2 );
                 printf( "FIX%d\n", t - 0x10 );
                 ++step;

@@ -31,8 +31,10 @@
 #define REGISTERS502    22
 
 #define TOKEN_ALPHA     0x2B  /* starts and ends alpha mode */
-#define TOKEN_M20       0x2C  /* prefix for M20..M39 and FIX */
-#define TOKEN_M80       0x2F  /* prefix for M80..M99 (synthetic) */
+#define TOKEN_F1        0x2C  /* prefix +20: M20..M39, FIX with RND */
+#define TOKEN_F2        0x2D  /* prefix +40: M40..M59 */
+#define TOKEN_F3        0x2E  /* prefix +60: M60..M79 */
+#define TOKEN_F4        0x2F  /* prefix +80: M80..M99, synthetic */
 #define TOKEN_PASSWORD  0xEC  /* terminates the password */
 #define PASSWORD_LEN    4     /* characters of a password */
 

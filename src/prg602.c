@@ -222,7 +222,7 @@ int parseRegister502( const char *p, int *group, int *index )
  */
 int registerPrefix( int group )
 {
-    return group >= 2 ? TOKEN_M20 - 1 + group / 2 : 0;
+    return group >= 2 ? TOKEN_F1 - 1 + group / 2 : 0;
 }
 
 
@@ -388,7 +388,7 @@ bool step( const char *p, int len )
         return true;
     }
     if ( len == 4 && strncasecmp( p, "FIX", 3 ) == 0 && isdigit( (unsigned char) p[ 3 ] ) ) {
-        emit( TOKEN_M20 );
+        emit( TOKEN_F1 );
         emit( 0x10 + p[ 3 ] - '0' );
         return true;
     }
@@ -1164,7 +1164,7 @@ int main( int argc, char **argv )
         int n = 0, line = 0;
 
         for ( i = 0; i < Count; ++i ) {
-            if ( ( Code[ i ] >= TOKEN_ALPHA && Code[ i ] <= TOKEN_M80 )
+            if ( ( Code[ i ] >= TOKEN_ALPHA && Code[ i ] <= TOKEN_F4 )
                  || Code[ i ] == TOKEN_PASSWORD )
             {
                 line = n++ == 0 ? CodeLine[ i ] : line;
