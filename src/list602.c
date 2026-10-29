@@ -1015,6 +1015,12 @@ int listFile( int start, int header_len, int end )
             data_footer = footer2 < end;
         }
         file = data_end > data ? "all" : "program";
+        if ( data_end == data && after < end && Data[ after ] == 0xFF ) {
+            /*
+             *  The program ends with 0xFF in front of the footer
+             */
+            ++after;
+        }
         if ( h[ 1 ] == TYPE_DATA ) {
             /*
              *  The simulator writes "all" files with type 40 40,
