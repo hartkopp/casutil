@@ -277,10 +277,11 @@ programs:
   `-n` and `-f` take precedence. An unknown key is an error.
 - `*** P0`..`*** P9` start a program, as in the listings of the printer
   FP-10. `list602` writes one step per line and the number of steps behind
-  each program as comment, e.g. `# 25 steps`. `prg602` also accepts several
-  steps in a line separated by blanks. Step numbers of 3 digits at the
-  beginning of a line (`list602 -s`), which are only for information, and
-  the hex codes of `list602 -x` are ignored.
+  each program as comment, e.g. `# 170 steps`, which includes the program
+  marker as with the FP-10. `prg602` also accepts several steps in a line
+  separated by blanks. Step numbers of 3 digits at the beginning of a line
+  (`list602 -s`), which are only for information, and the hex codes of
+  `list602 -x` are ignored.
 - Steps are written as listed by `list602`, in ASCII or UTF-8, e.g.
   `MR1F`, `FIX2`, `x^2` or `x²`, the registers also as on the
   FX-501P/FX-502P, e.g. `MR5`, `MR.5` or `M+.F`. Names of steps are also

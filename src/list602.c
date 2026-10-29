@@ -471,13 +471,15 @@ void stepStart( int step, int start, int length )
 /*
  *  List the program steps in Data[ start ] .. Data[ end - 1 ]
  *  Each program starts with "*** Pn" and ends with the number of steps as
- *  comment, like the listing of the printer FP-10.
+ *  comment, like the listing of the printer FP-10, which counts the program
+ *  marker as well.
  */
 void listProgram( int start, int end )
 {
     char buffer[ 32 ];
     int i = start;
     int step = 0;
+    int marker = 0;           /* 1 within a program */
     bool first = true;
 
     if ( start < end && Data[ start ] > 0x09 ) {
@@ -499,9 +501,10 @@ void listProgram( int start, int end )
              *  Start of a program, step numbers restart
              */
             if ( !first ) {
-                printf( "# %d steps\n\n", step );
+                printf( "# %d steps\n\n", step + marker );
             }
             printf( "*** P%d\n", c );
+            marker = 1;
             step = 0;
             ++i;
 
@@ -625,7 +628,7 @@ void listProgram( int start, int end )
      *  Number of steps of the last program, as printed by the FP-10
      */
     if ( start < end ) {
-        printf( "# %d steps\n", step );
+        printf( "# %d steps\n", step + marker );
     }
 }
 
