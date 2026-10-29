@@ -7,6 +7,8 @@
  */
 
 #define HEADER_LEN 8
+#define NAME_LEN   6          /* characters of a file name */
+#define NAME_PADDING 0x0F     /* fills short names from the left */
 #define FOOTER_LEN 8          /* number of 0xFF bytes */
 #define REG_LEN    8          /* bytes per data register */
 
@@ -206,4 +208,43 @@ void registerName( char *buffer, int group, int index )
     else {
         sprintf( buffer, "%dF", group );
     }
+}
+
+
+/*
+ *  Store a file number in the header bytes 2..7 of an FX-601P/FX-602P
+ *  file: last digit and 0xA, first and second digit, 0xFF 0xFF 0xFF 0xFF
+ *  The number 000 means no name.
+ */
+void encodeNumber602( int *h, int number )
+{
+    h[ 2 ] = number % 10 << 4 | 0x0A;
+    h[ 3 ] = number / 100 << 4 | number / 10 % 10;
+    h[ 4 ] = h[ 5 ] = h[ 6 ] = h[ 7 ] = 0xFF;
+}
+
+
+/*
+ *  Store a file name of len alpha codes in the header bytes 2..7 of an
+ *  FX-601P/FX-602P file: right aligned, padded with 0x0F, the nibbles of
+ *  the characters spread over the bytes. Bit 7 is not stored for lower
+ *  case letters and the codes 0xAA..0xAF, which appear as 0x10..0x2F.
+ */
+void encodeName602( int *h, const int *codes, int len )
+{
+    int c[ NAME_LEN ];
+    int i;
+
+    for ( i = 0; i < NAME_LEN; ++i ) {
+        c[ i ] = i < NAME_LEN - len ? NAME_PADDING : codes[ i - NAME_LEN + len ];
+        if ( c[ i ] >= 0x90 && c[ i ] <= 0xAF ) {
+            c[ i ] &= 0x7F;
+        }
+    }
+    h[ 2 ] = ( c[ 4 ] & 0x0F ) << 4 | ( c[ 5 ] & 0x0F );
+    h[ 3 ] = ( c[ 2 ] & 0x0F ) << 4 | ( c[ 3 ] & 0x0F );
+    h[ 4 ] = ( c[ 0 ] & 0x0F ) << 4 | ( c[ 1 ] & 0x0F );
+    h[ 5 ] = ( c[ 4 ] & 0xF0 ) | c[ 5 ] >> 4;
+    h[ 6 ] = ( c[ 2 ] & 0xF0 ) | c[ 3 ] >> 4;
+    h[ 7 ] = ( c[ 0 ] & 0xF0 ) | c[ 1 ] >> 4;
 }

@@ -20,6 +20,8 @@
  *      # @file program, data, all or display (default from the content)
  *      # @name "name" or # @number n (default: no name)
  *      # @mode .nn, the memory partition of the FX-602P (default .20)
+ *      # @rawheader XX XX .., all bytes of the header, which replace the
+ *        header created from the lines above
  *    P0..P9      start a program
  *    steps       one or more per line, separated by blanks, in ASCII or
  *                UTF-8 as listed by list602, e.g. LBL0, MR1F, FIX3, x^2
@@ -51,8 +53,6 @@
 #define MAX_CODES     0x1000  /* more than any program area */
 #define MAX_REGISTERS 200     /* register lines in the listing */
 #define LINE_LEN      1024
-#define NAME_LEN      6
-#define NAME_PADDING  0x0F    /* fills short names from the left */
 #define LEAD_IN_TIME  50      /* tens of a second, as the FX-602P */
 #define MODE          20      /* default memory partition, MODE . 20 */
 #define STEPS501      128     /* program area of the FX-501P */
@@ -111,6 +111,8 @@ int Mode = -1;                /* MODE . nn */
 int Number = -1;              /* file number */
 int NameCodes[ NAME_LEN ];    /* file name */
 int NameLen = -1;
+int RawHeader[ HEADER_LEN ];  /* header bytes of # @rawheader */
+int RawHeaderLen = 0;
 
 int LineNo = 0;
 
@@ -301,9 +303,11 @@ int alphaCode( const char **pp, int *prefix )
 /*
  *  Parse an alpha text in quotes at *pp into codes[], advance *pp
  *  With registers, prefixes and register displays are allowed.
+ *  With closed, the closing quote may be missing at the end of the line,
+ *  *closed is set to false then.
  *  Returns the number of codes
  */
-int alphaText( const char **pp, int *codes, int max, bool registers )
+int alphaText( const char **pp, int *codes, int max, bool registers, bool *closed )
 {
     const char *p = *pp;
     int n = 0;
@@ -316,6 +320,11 @@ int alphaText( const char **pp, int *codes, int max, bool registers )
         const char *start = p;
         int prefix, c;
 
+        if ( *p == '\0' && closed != NULL ) {
+            *closed = false;
+            *pp = p;
+            return n;
+        }
         if ( *p == '\0' ) {
             error( "Missing quote at the end of the alpha text" );
         }
@@ -332,6 +341,9 @@ int alphaText( const char **pp, int *codes, int max, bool registers )
             codes[ n++ ] = prefix;
         }
         codes[ n++ ] = c;
+    }
+    if ( closed != NULL ) {
+        *closed = true;
     }
     *pp = p + 1;
     return n;
@@ -580,14 +592,17 @@ void parseValue( const char *p, REGISTER *r )
     if ( r->raw ) {
         p = parseBytes( p, r->bytes, REG_LEN );
     }
+    else if ( strchr( p, '[' ) != NULL ) {
+        /*
+         *  The bytes take precedence, the number is not evaluated
+         */
+        p = parseBytes( strchr( p, '[' ), r->bytes, REG_LEN );
+        r->raw = true;
+    }
     else {
         p = skipBlanks( parseNumber( p, r, strstr( p, "(synthetic)" ) != NULL ) );
         if ( strncmp( p, "(synthetic)", 11 ) == 0 ) {
             p = skipBlanks( p + 11 );
-        }
-        if ( *p == '[' ) {
-            p = parseBytes( p, r->bytes, REG_LEN );
-            r->raw = true;
         }
     }
     if ( *skipBlanks( p ) != '\0' ) {
@@ -706,7 +721,7 @@ bool directive( const char *p )
         if ( NameLen >= 0 || Number >= 0 ) {
             error( "@name or @number is set twice" );
         }
-        NameLen = alphaText( &value, NameCodes, NAME_LEN, false );
+        NameLen = alphaText( &value, NameCodes, NAME_LEN, true, NULL );
     }
     else if ( len == 6 && strncmp( key, "number", len ) == 0 ) {
         char *end;
@@ -729,6 +744,22 @@ bool directive( const char *p )
                    fieldLength( value ), value );
         }
         setOnce( &Mode, (int) n, "mode" );
+    }
+    else if ( len == 9 && strncmp( key, "rawheader", len ) == 0 ) {
+        if ( RawHeaderLen > 0 ) {
+            error( "@rawheader is set twice" );
+        }
+        while ( *value != '\0' ) {
+            if ( RawHeaderLen == HEADER_LEN || fieldLength( value ) != 2
+                 || ( RawHeader[ RawHeaderLen++ ] = hexValue( value ) ) < 0 )
+            {
+                error( "Up to %d bytes in hex expected for @rawheader", HEADER_LEN );
+            }
+            value = skipBlanks( value + 2 );
+        }
+        if ( RawHeaderLen == 0 ) {
+            error( "Bytes in hex expected for @rawheader" );
+        }
     }
     else if ( len > 0 && strspn( key, "0123456789" ) == (size_t) len ) {
         error( "Use \"# @calculator %.*s\"", len, key );
@@ -756,7 +787,7 @@ void displayLine( const char *p )
         return;
     }
     DisplayIsText = true;
-    DisplayTextLen = alphaText( &p, DisplayText, DISPLAY_CHARS, false );
+    DisplayTextLen = alphaText( &p, DisplayText, DISPLAY_CHARS, false, NULL );
     p = skipBlanks( p );
     if ( *p == '[' ) {
         p = parseBytes( p, DisplayCodes, DISPLAY_LEN );
@@ -842,13 +873,20 @@ void translateLine( char *line )
              *  Alpha text
              */
             int codes[ LINE_LEN ];
-            int n = alphaText( &p, codes, LINE_LEN, true ), i;
+            bool closed;
+            int n = alphaText( &p, codes, LINE_LEN, true, &closed ), i;
 
             emit( TOKEN_ALPHA );
             for ( i = 0; i < n; ++i ) {
                 emit( codes[ i ] );
             }
-            emit( TOKEN_ALPHA );
+            if ( closed ) {
+                emit( TOKEN_ALPHA );
+            }
+            else {
+                fprintf( stderr, "Warning: line %d: no closing quote, the alpha "
+                                 "text is not terminated\n", LineNo );
+            }
         }
         else if ( first && len >= 3 && strspn( p, "0123456789" ) == (size_t) len ) {
             /*
@@ -867,7 +905,7 @@ void translateLine( char *line )
                 error( "The password must follow the program marker" );
             }
             p = skipBlanks( p + len );
-            n = alphaText( &p, codes, LINE_LEN, false );
+            n = alphaText( &p, codes, LINE_LEN, false, NULL );
             while ( n > 0 ) {
                 emit( codes[ --n ] );
             }
@@ -942,36 +980,20 @@ int registerPosition( const REGISTER *r )
  *  Store the file name or number in the header of an FX-601P/FX-602P
  *  file, see printName() in list602.c
  */
-void setName602( unsigned char *h )
+void setName602( unsigned char *out )
 {
-    int c[ NAME_LEN ];
+    int h[ HEADER_LEN ];
     int i;
 
     if ( NameLen < 0 ) {
-        int d1 = Number / 100, d2 = Number / 10 % 10, d3 = Number % 10;
-
-        h[ 2 ] = (unsigned char) ( d3 << 4 | 0x0A );
-        h[ 3 ] = (unsigned char) ( d1 << 4 | d2 );
-        memset( h + 4, 0xFF, 4 );
-        return;
+        encodeNumber602( h, Number );
     }
-    /*
-     *  Bit 7 is not stored for lower case letters and the codes
-     *  0xAA..0xAF, list602 restores it for the codes 0x10..0x2F
-     */
-    for ( i = 0; i < NAME_LEN; ++i ) {
-        c[ i ] = i < NAME_LEN - NameLen ? NAME_PADDING
-               : NameCodes[ i - NAME_LEN + NameLen ];
-        if ( c[ i ] >= 0x90 && c[ i ] <= 0xAF ) {
-            c[ i ] &= 0x7F;
-        }
+    else {
+        encodeName602( h, NameCodes, NameLen );
     }
-    h[ 2 ] = (unsigned char) ( ( c[ 4 ] & 0x0F ) << 4 | ( c[ 5 ] & 0x0F ) );
-    h[ 3 ] = (unsigned char) ( ( c[ 2 ] & 0x0F ) << 4 | ( c[ 3 ] & 0x0F ) );
-    h[ 4 ] = (unsigned char) ( ( c[ 0 ] & 0x0F ) << 4 | ( c[ 1 ] & 0x0F ) );
-    h[ 5 ] = (unsigned char) ( ( c[ 4 ] & 0xF0 ) | c[ 5 ] >> 4 );
-    h[ 6 ] = (unsigned char) ( ( c[ 2 ] & 0xF0 ) | c[ 3 ] >> 4 );
-    h[ 7 ] = (unsigned char) ( ( c[ 0 ] & 0xF0 ) | c[ 1 ] >> 4 );
+    for ( i = 2; i < HEADER_LEN; ++i ) {
+        out[ i ] = (unsigned char) h[ i ];
+    }
 }
 
 
@@ -1182,6 +1204,26 @@ int main( int argc, char **argv )
                                    : FileType == FILE_ALL ? TYPE_ALL : TYPE_DATA );
         setName602( out );
         len = HEADER_LEN;
+    }
+
+    /*
+     *  The raw header replaces the header, the options -n and -f still
+     *  take precedence
+     */
+    if ( RawHeaderLen > 0 ) {
+        if ( RawHeaderLen != len ) {
+            error( "@rawheader needs %d bytes for the FX-%dP", len, Calculator );
+        }
+        for ( i = 0; i < len; ++i ) {
+            out[ i ] = (unsigned char) RawHeader[ i ];
+        }
+        if ( !fx502 && ( name != NULL || number != NULL ) ) {
+            setName602( out );
+        }
+        else if ( fx502 && number != NULL ) {
+            out[ 0 ] = (unsigned char) ( Number / 10 % 10 << 4 | Number % 10 );
+            out[ 1 ] = (unsigned char) ( ( out[ 1 ] & 0xF0 ) | Number / 100 );
+        }
     }
 
     /*

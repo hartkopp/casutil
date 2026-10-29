@@ -54,7 +54,7 @@
  */
 bool Utf8 = false;
 bool ShowHex = false;
-bool Names502 = false;        /* register names of the FX-501P/FX-502P */
+bool File502 = false;         /* file of the FX-501P/FX-502P */
 
 /*
  *  Input buffer, filled by the reading routines
@@ -92,7 +92,7 @@ bool memoryName( char *buffer, int token, int offset )
     else {
         return false;
     }
-    if ( Names502 && group <= 1 ) {
+    if ( File502 && group <= 1 ) {
         /*
          *  M0..M9, MF, M.0..M.9, M.F
          */
@@ -327,6 +327,28 @@ void printNumber( const int *p )
 
 
 /*
+ *  Check if prg602 creates the same bytes from the number printed by
+ *  printNumber(): the mantissa is normalized, a zero has no exponent and
+ *  sign, the exponent is not -100 and the sign digit is the one of the
+ *  calculator (5 or 8 added if negative)
+ */
+bool isLossless( const int *p )
+{
+    int sign = p[ 1 ];
+    bool zero = ( p[ 2 ] >> 4 ) == 0 && p[ 3 ] == 0 && p[ 4 ] == 0
+                && p[ 5 ] == 0 && p[ 6 ] == 0 && ( p[ 7 ] & 0x0F ) == 0;
+
+    if ( zero ) {
+        return p[ 0 ] == 0 && p[ 1 ] == 0;
+    }
+    if ( ( p[ 7 ] & 0x0F ) == 0 || ( sign == 0 && p[ 0 ] == 0 ) ) {
+        return false;
+    }
+    return sign <= 1 || sign == ( File502 ? 8 : 5 ) || sign == ( File502 ? 9 : 6 );
+}
+
+
+/*
  *  Print the data register at Data[ i ]
  */
 void printRegister( int i )
@@ -350,7 +372,9 @@ void printRegister( int i )
         }
         printf( "]" );
     }
-    if ( ShowHex && ( isRegister( Data + i ) || isSyntheticRegister( Data + i ) ) ) {
+    if ( ( ShowHex || !isLossless( Data + i ) )
+         && ( isRegister( Data + i ) || isSyntheticRegister( Data + i ) ) )
+    {
         int j;
         printf( "  [" );
         for ( j = 0; j < REG_LEN; ++j ) {
@@ -516,7 +540,11 @@ void listProgram( int start, int end )
                 offset = 0;
                 ++step;
             }
-            printf( "\"\n" );
+
+            /*
+             *  No closing quote if the closing 0x2B is missing
+             */
+            printf( i < end ? "\"\n" : "\n" );
             if ( i < end ) {
                 /*
                  *  Closing 0x2B
@@ -618,6 +646,29 @@ int displayStart( const int *c )
 
 
 /*
+ *  Check if prg602 creates the same codes from the text of the alpha
+ *  display data: padding 0x0F, no bit 7 but for the sixth character and
+ *  the codes CC 44 E0 00 FF behind the text
+ */
+bool isDisplayDescribed( const int *c )
+{
+    static const int behind[] = { 0xCC, 0x44, 0xE0, 0x00, 0xFF };
+    int start = displayStart( c );
+    int i;
+
+    for ( i = 0; i < DISPLAY_LEN; ++i ) {
+        int e = i >= DISPLAY_CHARS ? behind[ i - DISPLAY_CHARS ]
+              : ( i < start ? 0x0F : c[ i ] & 0x7F ) | ( i == 5 ? 0x80 : 0 );
+
+        if ( c[ i ] != e ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+/*
  *  Check for alpha display data of the calculator
  */
 bool isDisplayText( const int *p )
@@ -663,24 +714,26 @@ void printNumber502( int d12, int d3 )
  *  The file number 000 is used if no name or number is entered.
  *  FX-602P file name: 6 alpha characters without bit 7, nibbles spread
  *                     over the bytes 2..7
- *  The line "# @name" or "# @number" for prg602 is printed, nothing if
- *  there is no name.
+ *  Returns the file number, 0 if there is no name, -1 for a name stored
+ *  in codes[] with the length *len, -2 for an invalid number
  */
-void printName( const int *h )
+int decodeName( const int *h, int *codes, int *len )
 {
-    int c[ 6 ];
+    int c[ NAME_LEN ];
     int i, n;
 
     if ( h[ 2 ] == 0xFF && h[ 3 ] == 0xFF && h[ 4 ] == 0xFF
          && h[ 5 ] == 0xFF && h[ 6 ] == 0xFF && h[ 7 ] == 0xFF )
     {
-        return;
+        return 0;
     }
     if ( ( h[ 2 ] & 0x0F ) == 0x0A
          && h[ 4 ] == 0xFF && h[ 5 ] == 0xFF && h[ 6 ] == 0xFF && h[ 7 ] == 0xFF )
     {
-        printNumber502( h[ 3 ], ( h[ 2 ] & 0xF0 ) | 0x0A );
-        return;
+        if ( h[ 3 ] >> 4 > 9 || ( h[ 3 ] & 0x0F ) > 9 || h[ 2 ] >> 4 > 9 ) {
+            return -2;
+        }
+        return ( h[ 3 ] >> 4 ) * 100 + ( h[ 3 ] & 0x0F ) * 10 + ( h[ 2 ] >> 4 );
     }
     c[ 0 ] = ( h[ 7 ] & 0xF0 ) | ( h[ 4 ] >> 4 );
     c[ 1 ] = ( h[ 7 ] << 4 & 0xF0 ) | ( h[ 4 ] & 0x0F );
@@ -689,22 +742,74 @@ void printName( const int *h )
     c[ 4 ] = ( h[ 5 ] & 0xF0 ) | ( h[ 2 ] >> 4 );
     c[ 5 ] = ( h[ 5 ] << 4 & 0xF0 ) | ( h[ 2 ] & 0x0F );
 
-    for ( i = 0; i < 6; ++i ) {
-        c[ i ] = alphaBit7( c[ i ] );
-    }
-
     /*
      *  Names are padded with 0x0F (FX-602P) or blanks (0x7F, simulator)
      */
-    for ( i = 0; i < 6 && ( c[ i ] == 0x0F || c[ i ] == 0x7F ); ++i )
+    for ( i = 0; i < NAME_LEN && ( c[ i ] == 0x0F || c[ i ] == 0x7F ); ++i )
         ;
-    for ( n = 6; n > i && ( c[ n - 1 ] == 0x0F || c[ n - 1 ] == 0x7F ); --n )
+    for ( n = NAME_LEN; n > i && ( c[ n - 1 ] == 0x0F || c[ n - 1 ] == 0x7F ); --n )
         ;
-    printf( "# @name \"" );
-    for ( ; i < n; ++i ) {
-        printAlpha( c[ i ], 0 );
+    for ( *len = 0; i < n; ++i ) {
+        codes[ ( *len )++ ] = alphaBit7( c[ i ] );
     }
-    printf( "\"\n" );
+    return -1;
+}
+
+
+/*
+ *  Print the line "# @name" or "# @number" for prg602, nothing if there
+ *  is no name
+ */
+void printName( const int *h )
+{
+    int codes[ NAME_LEN ];
+    int len, i;
+    int number = decodeName( h, codes, &len );
+
+    if ( number == -2 ) {
+        printf( "# Invalid file number %X%X%X\n", h[ 3 ] >> 4, h[ 3 ] & 0x0F, h[ 2 ] >> 4 );
+    }
+    else if ( number > 0 ) {
+        printf( "# @number %d\n", number );
+    }
+    else if ( number == -1 ) {
+        printf( "# @name \"" );
+        for ( i = 0; i < len; ++i ) {
+            printAlpha( codes[ i ], 0 );
+        }
+        printf( "\"\n" );
+    }
+}
+
+
+/*
+ *  Check if prg602 creates the same header from the lines "# @..."
+ *  printed for it, otherwise the line "# @rawheader" is needed
+ */
+bool isHeaderDescribed( const int *h, bool fx601, const char *file )
+{
+    int e[ HEADER_LEN ], codes[ NAME_LEN ];
+    int len, number, i;
+
+    e[ 0 ] = fx601 ? PARTITION601 : h[ 0 ] >= 0x04 && h[ 0 ] <= 0x40 ? h[ 0 ] : 0x40;
+    e[ 1 ] = strcmp( file, "program" ) == 0 ? TYPE_PROGRAM
+           : strcmp( file, "all" ) == 0 ? TYPE_ALL : TYPE_DATA;
+    number = decodeName( h, codes, &len );
+    if ( number == -2 ) {
+        return false;
+    }
+    if ( number >= 0 ) {
+        encodeNumber602( e, number );
+    }
+    else {
+        encodeName602( e, codes, len );
+    }
+    for ( i = 0; i < HEADER_LEN; ++i ) {
+        if ( e[ i ] != h[ i ] ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 
@@ -913,6 +1018,13 @@ int listFile( int start, int header_len, int end )
     if ( !fx601 && h[ 0 ] >= 0x04 && h[ 0 ] <= 0x40 ) {
         printf( "# @mode .%d\n", 20 + ( 512 - h[ 0 ] * 8 ) / 8 );
     }
+    if ( header_len == HEADER_LEN && !isHeaderDescribed( h, fx601, file ) ) {
+        printf( "# @rawheader" );
+        for ( i = 0; i < HEADER_LEN; ++i ) {
+            printf( " %02X", h[ i ] );
+        }
+        printf( "\n" );
+    }
 
     /*
      *  Remarks on damaged or unknown files
@@ -932,6 +1044,13 @@ int listFile( int start, int header_len, int end )
     if ( display_number ) {
         printf( "Display = " );
         printNumber( Data + body );
+        if ( !isLossless( Data + body ) ) {
+            printf( "  [" );
+            for ( i = 0; i < REG_LEN; ++i ) {
+                printf( i ? " %02X" : "%02X", Data[ body + i ] );
+            }
+            printf( "]" );
+        }
         printf( "\n" );
     }
     else if ( display_text ) {
@@ -943,7 +1062,7 @@ int listFile( int start, int header_len, int end )
             printAlpha( displayChar( c, i ), 0 );
         }
         printf( "\"" );
-        if ( ShowHex ) {
+        if ( ShowHex || !isDisplayDescribed( c ) ) {
             for ( i = 0; i < DISPLAY_LEN; ++i ) {
                 printf( i ? " %02X" : "  [%02X", c[ i ] );
             }
@@ -1034,6 +1153,7 @@ int listFile502( int start, int end )
     bool footer;
     int after, prog_end = body, count = 0;
 
+    File502 = true;
     if ( program ) {
         /*
          *  The program ends with the first 0xFF, the unused steps and
@@ -1067,9 +1187,7 @@ int listFile502( int start, int end )
     printf( "\n" );
 
     if ( program && body < prog_end ) {
-        Names502 = true;
         listProgram( body, prog_end );
-        Names502 = false;
     }
     if ( !program ) {
         char reg[ 8 ];
@@ -1102,6 +1220,7 @@ int listFile502( int start, int end )
     if ( !footer ) {
         printf( "\nEnd of file missing\n" );
     }
+    File502 = false;
     return after;
 }
 

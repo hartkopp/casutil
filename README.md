@@ -224,7 +224,10 @@ standard output.
   known meaning, e.g. from synthetic programming, are shown as `[XX]`,
   unknown alpha characters as `\XX`. Each file starts with the comment
   lines `# @calculator`, `# @file`, `# @name` or `# @number` and
-  `# @mode`, which describe the file for `prg602`.
+  `# @mode`, which describe the file for `prg602`, and `# @rawheader` if
+  these lines do not describe the header exactly. Numbers, which would not
+  be written back into the same bytes, e.g. not normalized ones, are
+  followed by their bytes as with `-x`, so a listing reproduces the file.
 
 Example for an fx-8000G recording:
 
@@ -262,9 +265,12 @@ programs:
   | `# @name` | `"name"`, up to 6 characters (FX-601P/FX-602P) | no name | `-n<name>` |
   | `# @number` | `0`..`999` | no name | `-f<number>` |
   | `# @mode` | memory partition `.20`..`.80` (FX-602P) | `.20` | |
+  | `# @rawheader` | all bytes of the header in hex | | |
 
   `601` is the FX-601P with 128 steps and 16 registers, `502` and `501`
-  write the program area of 256 or 128 steps. An unknown key is an error.
+  write the program area of 256 or 128 steps. `# @rawheader` replaces the
+  header created from the other lines, which still describe the contents,
+  `-n` and `-f` take precedence. An unknown key is an error.
 - `P0`..`P9` start a program, the steps follow separated by blanks or one
   per line. Step numbers of 3 digits in front and the hex codes of
   `list602 -x` are ignored.
@@ -274,15 +280,17 @@ programs:
   accepted in other case.
 - Alpha text is written in quotes with the escapes of `list602`, e.g.
   `"r=\ar05"`, codes without name as `[XX]`, a password as
-  `Password "AB"` behind the program marker.
+  `Password "AB"` behind the program marker. Alpha text without closing
+  quote at the end of the line is not terminated, as listed by `list602`
+  for a program ending in alpha mode; `prg602` warns about it.
 - Data registers are written as `M05 = 1.5`, `M1F = -2.5e-12`, on the
   FX-501P/FX-502P also as `M5`, `M.5`, `M.F`, the L registers of the
   FX-501P/FX-601P as `[11]`..`[15]`. A value is a number, 8 bytes in
-  brackets or a number followed by the bytes of `list602 -x`. Hex digits
-  are only accepted in numbers marked as `(synthetic)`. Registers which
-  are not listed are 0.
+  brackets or a number followed by the bytes in brackets, which take
+  precedence. Hex digits are only accepted in numbers marked as
+  `(synthetic)`. Registers which are not listed are 0.
 - Display data are written as `Display = 55555` or `Display = "TEXT"`,
-  optionally followed by the 16 codes of `list602 -x`. The FX-602P loads
+  optionally followed by the bytes or the 16 codes in brackets. The FX-602P loads
   such files, but shows 0 afterwards, also for its own recordings, so they
   are probably only useful for printing from the tape (FA-2 in PRT/MT).
 - Other lines starting with `#`, empty lines and the headings of `list602`
