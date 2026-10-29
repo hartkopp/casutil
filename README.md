@@ -422,6 +422,9 @@ documentation.
 - Original documentation: <https://www.mvcsys.de/doc/casioutil.html>
 - Piotr Piatek, who inspired much of this work and documented the Casio
   hardware, interfaces and the MD-100: <https://www.pisi.com.pl/piotr433/>
+- Synthetic programming of the FX-602P with the table of all codes:
+  E. Welker, Sedezimal-Code (1982),
+  <https://vpc.w10.site/fx602p/Casio%20FX602P%20Sedimalcode%201.pdf>
 - FX-602P and FX-603P token codes, file format and simulator by Martin
   Krischik: <https://fx-602p.krischik.com>, manuals of the FX-602P,
   FX-502P, FA-1 and FA-2: <https://fx-602p.krischik.com/fx-602p/manuals/>

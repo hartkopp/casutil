@@ -47,9 +47,11 @@ typedef struct _name {
  *  Standard plane
  *  The memory operations 0x50..0xE9 (columns 0..9) and 0xF0..0xF9
  *  are handled by memoryName() and are left out here.
- *  Names in parentheses are synthetic codes, which act like the command
- *  named. NULL marks unknown codes and the synthetic codes without unique
- *  name: 0x3B and 0x9B act like SAC, 0xEA and 0xEB cause an error.
+ *  Names in parentheses are synthetic codes, which are displayed like the
+ *  command named, but act differently (E. Welker, Sedezimal-Code, 1982):
+ *  (SAC) like xD, (SAC:) like xDEL, (GRA) like ISZ, (10^x) halts like BST,
+ *  (e^x) halts on a key pressed, SA executes the next step and halts.
+ *  NULL marks unknown codes and 0xEA, 0xEB, which both display "Error".
  */
 const NAME Tokens[ 256 ] = {
     /* 0x00..0x09: program markers P0..P9, handled separately */
@@ -77,6 +79,7 @@ const NAME Tokens[ 256 ] = {
     [ 0x36 ] = { "GOTO6" },    [ 0x37 ] = { "GOTO7" },
     [ 0x38 ] = { "GOTO8" },    [ 0x39 ] = { "GOTO9" },
     [ 0x3A ] = { "xD" },
+    [ 0x3B ] = { "(SAC)" },
     [ 0x3C ] = { "ENG" },      [ 0x3D ] = { "DMS", "\xC2\xB0'\"" },
     [ 0x3E ] = { "log" },      [ 0x3F ] = { "ln" },
     [ 0x40 ] = { "GSBP0" },    [ 0x41 ] = { "GSBP1" },
@@ -102,7 +105,7 @@ const NAME Tokens[ 256 ] = {
     [ 0x8A ] = { "PAUSE" },    [ 0x8B ] = { "IND" },
     [ 0x8C ] = { "SAVE" },     [ 0x8D ] = { "LOAD" },
     [ 0x8E ] = { "MAC" },      [ 0x8F ] = { "SAC" },
-    [ 0x9A ] = { "xDEL" },
+    [ 0x9A ] = { "xDEL" },    [ 0x9B ] = { "(SAC:)" },
     [ 0x9C ] = { "ENG<-", "ENG\xE2\x86\x90" },
     [ 0x9D ] = { "DMS<-", "\xC2\xB0'\"\xE2\x86\x90" },
     [ 0x9E ] = { "10^x", "10\xCB\xA3" },
