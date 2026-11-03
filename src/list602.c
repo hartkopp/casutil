@@ -49,6 +49,8 @@
 #define DISPLAY_CHARS 11      /* characters shown in the display */
 #define PARTITION601  0x10    /* FX-601P: 128 steps */
 #define REGISTERS601  16      /* FX-601P: M00..M09, MF and 5 L registers */
+#define READ_ERROR    ( KCS_PARITY | KCS_FRAMING )
+#define ERROR_LISTED  0x1000  /* read error marked in the listing */
 
 /*
  *  Options
@@ -62,12 +64,69 @@ bool File502 = false;         /* file of the FX-501P/FX-502P */
  *  Input buffer, filled by the reading routines
  */
 int Data[ MAX_BYTES ];
+int Errors[ MAX_BYTES ];      /* read errors of the bytes in Data[] */
 int Count = 0;
+int FileStart = 0;            /* header of the current file in Data[] */
+bool Remarks = false;         /* remarks at the end of the current file */
 
 /*
  *  Name in ASCII or UTF-8 (option -u)
  */
 #define NAME_OF( n ) ( Utf8 && ( n ).utf8 != NULL ? ( n ).utf8 : ( n ).ascii )
+
+
+/*
+ *  Kind of a read error
+ */
+const char *errorName( int error )
+{
+    if ( ( error & READ_ERROR ) == READ_ERROR ) {
+        return "parity and framing error";
+    }
+    return error & KCS_PARITY ? "parity error" : "framing error";
+}
+
+
+/*
+ *  Check for a read error in Data[ i ], which isn't marked in the listing
+ */
+bool isUnlisted( int i )
+{
+    return ( Errors[ i ] & READ_ERROR ) && !( Errors[ i ] & ERROR_LISTED );
+}
+
+
+/*
+ *  Print the read errors of the bytes Data[ start ] .. Data[ end - 1 ]
+ *  with their position in the file, the first one preceded by prefix.
+ *  Each read error is printed once.
+ *  Returns false if there is no read error.
+ */
+bool printErrors( const char *prefix, int start, int end )
+{
+    int i;
+
+    for ( i = start; i < end && i < Count; ++i ) {
+        if ( isUnlisted( i ) ) {
+            printf( "%s %s in byte %d (%02X)", prefix, errorName( Errors[ i ] ),
+                    i - FileStart, Data[ i ] );
+            prefix = ",";
+            Errors[ i ] |= ERROR_LISTED;
+        }
+    }
+    return *prefix == ',';
+}
+
+
+/*
+ *  End the line of a step or register in Data[ start ] .. Data[ end - 1 ]
+ *  with a comment on read errors
+ */
+void endLine( int start, int end )
+{
+    printErrors( "  #", start, end );
+    printf( "\n" );
+}
 
 
 /*
@@ -404,7 +463,7 @@ void printRegister( int i )
         }
         printf( "]" );
     }
-    printf( "\n" );
+    endLine( i, i + REG_LEN );
 }
 
 
@@ -527,7 +586,8 @@ void listProgram( int start, int end )
                 printSteps( step + marker, pass, false );
                 printf( "\n" );
             }
-            printf( "*** P%d\n", c );
+            printf( "*** P%d", c );
+            endLine( i, i + 1 );
             marker = 1;
             pass = 0;
             step = 0;
@@ -549,11 +609,9 @@ void listProgram( int start, int end )
                 while ( --j >= i ) {
                     printAlpha( Data[ j ], 0 );
                 }
-                printf( "\"\n" );
-                while ( Data[ i ] != TOKEN_PASSWORD ) {
-                    ++i;
-                }
-                ++i;
+                printf( "\"" );
+                endLine( i, i + PASSWORD_LEN + 1 );
+                i += PASSWORD_LEN + 1;
             }
             first = false;
             continue;
@@ -571,18 +629,21 @@ void listProgram( int start, int end )
              */
             int j = i + 1;
             int offset = 0;
+            int s;
 
             while ( j < end && Data[ j ] != TOKEN_ALPHA ) {
                 ++j;
             }
             if ( j < end && containsLabels( i + 1, j ) ) {
                 stepStart( ++step, i, 1 );
-                printf( "[%02X]\n", c );
+                printf( "[%02X]", c );
+                endLine( i, i + 1 );
                 ++i;
                 continue;
             }
             stepStart( ++step, i, j < end ? j - i + 1 : j - i );
             printf( "\"" );
+            s = i;
             for ( ++i; i < j; ++i ) {
                 /*
                  *  A prefix without a register display is shown as \XX
@@ -603,7 +664,7 @@ void listProgram( int start, int end )
              *  \FF instead of the closing quote, if the program ends
              *  without the closing 0x2B
              */
-            printf( i < end ? "\"\n" : "\\FF\n" );
+            printf( i < end ? "\"" : "\\FF" );
             broken = i >= end;
             if ( i < end ) {
                 /*
@@ -612,6 +673,7 @@ void listProgram( int start, int end )
                 ++step;
                 ++i;
             }
+            endLine( s, i );
             continue;
         }
 
@@ -624,14 +686,16 @@ void listProgram( int start, int end )
 
             if ( memoryName( buffer, t, offset ) ) {
                 stepStart( ++step, i, 2 );
-                printf( "%s\n", buffer );
+                printf( "%s", buffer );
+                endLine( i, i + 2 );
                 ++step;
                 i += 2;
                 continue;
             }
             if ( c == TOKEN_F1 && t >= 0x10 && t <= 0x19 ) {
                 stepStart( ++step, i, 2 );
-                printf( "FIX%d\n", t - 0x10 );
+                printf( "FIX%d", t - 0x10 );
+                endLine( i, i + 2 );
                 ++step;
                 i += 2;
                 continue;
@@ -640,14 +704,15 @@ void listProgram( int start, int end )
 
         stepStart( ++step, i, 1 );
         if ( memoryName( buffer, c, 0 ) ) {
-            printf( "%s\n", buffer );
+            printf( "%s", buffer );
         }
         else if ( Tokens[ c ].ascii != NULL ) {
-            printf( "%s\n", NAME_OF( Tokens[ c ] ) );
+            printf( "%s", NAME_OF( Tokens[ c ] ) );
         }
         else {
-            printf( "[%02X]\n", c );
+            printf( "[%02X]", c );
         }
+        endLine( i, i + 1 );
         ++i;
     }
 
@@ -922,11 +987,67 @@ bool isFooter( int pos, int end )
 
 
 /*
+ *  Start a remark at the end of a file, the remarks are separated from
+ *  the listing by an empty line
+ */
+void startRemark( void )
+{
+    if ( !Remarks ) {
+        printf( "\n" );
+        Remarks = true;
+    }
+}
+
+
+/*
+ *  Print a remark on an incomplete footer starting at Data[ pos ], what
+ *  tells if the contents in front of the footer are complete
+ */
+void printFooter( int pos, int end, const char *what )
+{
+    int n = 0;
+
+    while ( pos + n < end && n < FOOTER_LEN && Data[ pos + n ] == 0xFF ) {
+        ++n;
+    }
+    startRemark();
+    if ( n > 0 ) {
+        printf( "# Footer incomplete (%d of %d bytes), %s\n", n, FOOTER_LEN, what );
+    }
+    else {
+        printf( "# Footer missing, %s\n", what );
+    }
+}
+
+
+/*
+ *  Print a remark on the missing end of data registers: found registers
+ *  are listed, the footer is expected at Data[ pos ], count is the number
+ *  of registers from the memory partition or 0
+ */
+void printRegistersEnd( int pos, int end, int found, int count )
+{
+    if ( count > 0 && found >= count ) {
+        printFooter( pos, end, "the data registers are complete" );
+    }
+    else if ( count > 0 ) {
+        startRemark();
+        printf( "# End of file missing, %d of %d data registers\n", found, count );
+    }
+    else {
+        startRemark();
+        printf( "# End of file missing after %d data registers\n", found );
+    }
+}
+
+
+/*
  *  Find the data registers starting at Data[ data ]
  *  count is the number of registers from the memory partition or 0.
  *  Registers may contain 0xFF only, therefore the footer is expected
  *  behind count registers. Otherwise the first footer at a register
- *  boundary terminates the data.
+ *  boundary terminates the data. Without a footer, the data ends after
+ *  count registers or with the last complete register.
  *  Returns the end of the registers, *after is set behind the footer.
  */
 int findRegisters( int data, int count, int end, int *after, bool *footer )
@@ -943,6 +1064,9 @@ int findRegisters( int data, int count, int end, int *after, bool *footer )
             *after = i + FOOTER_LEN;
             *footer = true;
             return i;
+        }
+        if ( count > 0 && i == data + count * REG_LEN ) {
+            break;
         }
     }
     *after = end;
@@ -1112,6 +1236,9 @@ int listFile( int start, int header_len, int end )
     else if ( h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA ) {
         printf( "# Unknown file type %02X %02X\n", h[ 0 ], h[ 1 ] );
     }
+    if ( printErrors( "# Read error in the header:", start, body ) ) {
+        printf( "\n" );
+    }
     printf( "\n" );
 
     if ( display_number ) {
@@ -1124,7 +1251,7 @@ int listFile( int start, int header_len, int end )
             }
             printf( "]" );
         }
-        printf( "\n" );
+        endLine( body, body + REG_LEN );
     }
     else if ( display_text ) {
         int c[ DISPLAY_LEN ];
@@ -1141,14 +1268,15 @@ int listFile( int start, int header_len, int end )
             }
             printf( "]" );
         }
-        printf( "\n" );
+        endLine( body, body + DISPLAY_LEN );
     }
     else if ( display_alpha ) {
         printf( "Display = \"" );
         for ( i = body; i < footer; ++i ) {
             printAlpha( Data[ i ], 0 );
         }
-        printf( "\"\n" );
+        printf( "\"" );
+        endLine( body, footer );
     }
     else {
         /*
@@ -1172,11 +1300,26 @@ int listFile( int start, int header_len, int end )
             }
         }
     }
-    if ( prog_end == end ) {
-        printf( "\nEnd of file missing\n" );
+    if ( strcmp( file, "program" ) == 0 && prog_end == end ) {
+        /*
+         *  The program is complete with the 0xFF in front of the footer
+         */
+        if ( i < end ) {
+            printFooter( i + 1, end, "the program is complete" );
+        }
+        else {
+            startRemark();
+            printf( "# End of file missing, the program may be incomplete\n" );
+        }
+    }
+    else if ( strcmp( file, "all" ) == 0 && prog_end == end ) {
+        startRemark();
+        printf( "# End of file missing within the program area, "
+                "no data registers\n" );
     }
     else if ( !data_footer ) {
-        printf( "\nEnd of data missing\n" );
+        printRegistersEnd( data_end, end, ( data_end - data ) / REG_LEN,
+                           steps > 0 ? registers : 0 );
     }
     return after;
 }
@@ -1257,6 +1400,9 @@ int listFile502( int start, int end )
     printf( "# @calculator %s\n", strcmp( model, "FX-501P" ) == 0 ? "501" : "502" );
     printf( "# @file %s\n", program ? "program" : "data" );
     printNumber502( ( h1 & 0x0F ) << 4 | h0 >> 4, h0 << 4 & 0xF0 );
+    if ( printErrors( "# Read error in the header:", start, body ) ) {
+        printf( "\n" );
+    }
     printf( "\n" );
 
     if ( program && body < prog_end ) {
@@ -1264,12 +1410,16 @@ int listFile502( int start, int end )
     }
     if ( !program ) {
         char reg[ 8 ];
+        int numbered = strcmp( model, "FX-501P" ) == 0 ? 11 : REGISTERS502;
         int n;
 
         /*
-         *  List in the order M0..M9, MF, M.0..M.9, M.F
+         *  List in the order M0..M9, MF, M.0..M.9, M.F, the registers
+         *  of an incomplete file as those of the FX-502P. The registers
+         *  missing at the end of an incomplete file are the first ones
+         *  of a group.
          */
-        for ( n = 0; n < count && ( n < 11 || count == REGISTERS502 ); ++n ) {
+        for ( n = 0; n < numbered && n < ( count + 10 ) / 11 * 11; ++n ) {
             int group = n / 11;
             int index = n % 11;
             int pos = group * 11 + 10 - index;
@@ -1286,12 +1436,22 @@ int listFile502( int start, int end )
             printf( "M%-3s = ", reg );
             printRegister( body + pos * REG_LEN );
         }
-        if ( n < count ) {
-            listParentheses( body, n, count );
+        if ( numbered < count ) {
+            listParentheses( body, numbered, count );
         }
     }
-    if ( !footer ) {
-        printf( "\nEnd of file missing\n" );
+    if ( !footer && program ) {
+        /*
+         *  The unused steps are filled with 0xFF, the length of the
+         *  footer is unknown
+         */
+        startRemark();
+        printf( prog_end < end ? "# End of file missing, the program is complete\n"
+                               : "# End of file missing, the program may be incomplete\n" );
+    }
+    else if ( !footer ) {
+        printRegistersEnd( body + count * REG_LEN, end, count,
+                           count == REGISTERS502 ? REGISTERS502 : 0 );
     }
     File502 = false;
     return after;
@@ -1343,12 +1503,13 @@ bool readWave( char *name, bool ignore )
             }
             continue;
         }
-        if ( c & ( KCS_FRAMING | KCS_PARITY ) ) {
+        if ( c & READ_ERROR ) {
             ++errors;
             if ( ignore ) {
                 continue;
             }
         }
+        Errors[ Count ] = c & READ_ERROR;
         Data[ Count++ ] = c & 0xFF;
     }
     if ( c != KCS_EOF && c >= 0 ) {
@@ -1361,8 +1522,9 @@ bool readWave( char *name, bool ignore )
     }
     kcsClose( wfp );
     if ( errors > 0 ) {
-        fprintf( stderr, "%d bytes with parity or framing errors%s\n",
-                 errors, ignore ? " ignored" : "" );
+        fprintf( stderr, "%d byte%s with parity or framing errors%s\n", errors,
+                 errors > 1 ? "s" : "",
+                 ignore ? " ignored" : ", marked in the listing" );
     }
     return true;
 }
@@ -1389,6 +1551,7 @@ int findFiles( int *starts, int max )
             starts[ n++ ] = j;
         }
         lead_in = false;
+        Errors[ j ] = Errors[ i ];
         Data[ j++ ] = Data[ i ];
     }
     Count = j;
@@ -1405,7 +1568,7 @@ int main( int argc, char **argv )
     bool wavemode = false;
     bool ignore = false;
     int starts[ 100 ];
-    int files, f, pos;
+    int files, f, pos, i;
 
     while ( argc > 1 && argv[ 1 ][ 0 ] == '-' ) {
 
@@ -1453,7 +1616,7 @@ int main( int argc, char **argv )
 
     files = findFiles( starts, 100 );
     if ( files == 0 || Count - starts[ 0 ] < HEADER_LEN ) {
-        printf( "No data found\n" );
+        fprintf( stderr, "No data found\n" );
         return 1;
     }
 
@@ -1476,6 +1639,8 @@ int main( int argc, char **argv )
         if ( f < files && starts[ f ] < pos + HEADER_LEN ) {
             header_len = starts[ f ] - pos;
         }
+        FileStart = pos;
+        Remarks = false;
         if ( isHeader502( pos, Count ) ) {
             pos = listFile502( pos, Count );
         }
@@ -1486,6 +1651,18 @@ int main( int argc, char **argv )
             ++f;
         }
         next = f < files ? starts[ f ] : Count;
+
+        /*
+         *  Read errors in the footer, the unused steps of an "all" file
+         *  or the noise at the end of a recording
+         */
+        for ( i = FileStart; i < next && !isUnlisted( i ); ++i )
+            ;
+        if ( i < next ) {
+            startRemark();
+            printErrors( "# Read error outside of the contents, not relevant:", i, next );
+            printf( "\n" );
+        }
         if ( next > pos && !wavemode ) {
             fprintf( stderr, "%d bytes after the end of file ignored\n",
                      next - pos );
