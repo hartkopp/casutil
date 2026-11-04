@@ -268,7 +268,7 @@ programs:
   | `# @file` | `program`, `data`, `all`, `display` | from the content | |
   | `# @name` | `"name"`, up to 6 characters (FX-601P/FX-602P) | no name | `-n<name>` |
   | `# @number` | `0`..`999` | no name | `-f<number>` |
-  | `# @mode` | memory partition `.20`..`.80` (FX-602P) | `.20` | |
+  | `# @mode` | memory partition `.20`..`.80` (FX-602P), `.81`..`.84` synthetic | `.20` | |
   | `# @rawheader` | all bytes of the header in hex | | |
 
   `601` is the FX-601P with 128 steps and 16 registers, `502` and `501`

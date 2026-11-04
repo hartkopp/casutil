@@ -48,6 +48,7 @@
 #define DISPLAY_LEN   16      /* bytes of alpha display data */
 #define DISPLAY_CHARS 11      /* characters shown in the display */
 #define PARTITION601  0x10    /* FX-601P: 128 steps */
+#define MAX_PARTITION 0x40    /* MODE . 20: 512 steps */
 #define REGISTERS601  16      /* FX-601P: M00..M09, MF and 5 L registers */
 #define READ_ERROR    ( KCS_PARITY | KCS_FRAMING )
 #define ERROR_LISTED  0x1000  /* read error marked in the listing */
@@ -923,7 +924,7 @@ bool isHeaderDescribed( const int *h, bool fx601, const char *file )
     int e[ HEADER_LEN ], codes[ NAME_LEN ];
     int len, number, i;
 
-    e[ 0 ] = fx601 ? PARTITION601 : h[ 0 ] >= 0x04 && h[ 0 ] <= 0x40 ? h[ 0 ] : 0x40;
+    e[ 0 ] = fx601 ? PARTITION601 : h[ 0 ] <= MAX_PARTITION ? h[ 0 ] : MAX_PARTITION;
     e[ 1 ] = strcmp( file, "program" ) == 0 ? TYPE_PROGRAM
            : strcmp( file, "all" ) == 0 ? TYPE_ALL : TYPE_DATA;
     number = decodeName( h, codes, &len );
@@ -1105,14 +1106,19 @@ int listFile( int start, int header_len, int end )
     /*
      *  Memory partition: steps / 8 in the first header byte,
      *  20..80 registers M00..M79 and one register MF..M7F for each
-     *  complete group of ten
+     *  complete group of ten. The partitions 0x00..0x03 (MODE . 84 .. 81)
+     *  are synthetic with 81..84 registers M00..M83, a partition beyond
+     *  512 steps has an unknown number of registers.
      */
-    if ( h[ 0 ] >= 0x04 && h[ 0 ] <= 0x40 ) {
+    if ( h[ 0 ] <= MAX_PARTITION ) {
         int numbered;
 
         steps = h[ 0 ] * 8;
         numbered = 20 + ( 512 - steps ) / 8;
         registers = numbered + numbered / 10;
+    }
+    else if ( h[ 1 ] == TYPE_ALL ) {
+        steps = h[ 0 ] * 8;
     }
 
     if ( h[ 1 ] == TYPE_DATA && footer == body + REG_LEN
@@ -1149,7 +1155,7 @@ int listFile( int start, int header_len, int end )
         display_alpha = true;
         steps = 0;
     }
-    else if ( h[ 1 ] == TYPE_ALL && steps > 0 ) {
+    else if ( h[ 1 ] == TYPE_ALL ) {
         /*
          *  The whole program area, unused steps filled with 0xFF,
          *  a separating 0xFF and all registers
@@ -1195,6 +1201,7 @@ int listFile( int start, int header_len, int end )
              *  the memory partition is unknown
              */
             steps = 0;
+            registers = 0;
         }
     }
 
@@ -1212,7 +1219,7 @@ int listFile( int start, int header_len, int end )
     if ( header_len == HEADER_LEN ) {
         printName( h );
     }
-    if ( !fx601 && h[ 0 ] >= 0x04 && h[ 0 ] <= 0x40 ) {
+    if ( !fx601 && h[ 0 ] <= MAX_PARTITION ) {
         printf( "# @mode .%d\n", 20 + ( 512 - h[ 0 ] * 8 ) / 8 );
     }
     if ( header_len == HEADER_LEN && !isHeaderDescribed( h, fx601, file ) ) {
@@ -1318,8 +1325,7 @@ int listFile( int start, int header_len, int end )
                 "no data registers\n" );
     }
     else if ( !data_footer ) {
-        printRegistersEnd( data_end, end, ( data_end - data ) / REG_LEN,
-                           steps > 0 ? registers : 0 );
+        printRegistersEnd( data_end, end, ( data_end - data ) / REG_LEN, registers );
     }
     return after;
 }

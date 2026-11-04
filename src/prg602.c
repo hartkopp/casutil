@@ -19,7 +19,8 @@
  *      # @calculator 602, 601, 502 or 501 (default 602)
  *      # @file program, data, all or display (default from the content)
  *      # @name "name" or # @number n (default: no name)
- *      # @mode .nn, the memory partition of the FX-602P (default .20)
+ *      # @mode .nn, the memory partition of the FX-602P (default .20),
+ *        .81 .. .84 are synthetic partitions with 24 .. 0 steps
  *      # @rawheader XX XX .., all bytes of the header, which replace the
  *        header created from the lines above
  *    *** P0      starts a program, as printed by the FP-10
@@ -758,8 +759,9 @@ bool directive( const char *p )
         char *end;
         long n = strtol( *value == '.' ? value + 1 : value, &end, 10 );
 
-        if ( n < 20 || n > 80 ) {
-            error( "Invalid memory partition \"%.*s\", use .20 .. .80",
+        if ( n < 20 || n > 84 ) {
+            error( "Invalid memory partition \"%.*s\", use .20 .. .80 "
+                   "(.81 .. .84 synthetic)",
                    fieldLength( value ), value );
         }
         setOnce( &Mode, (int) n, "mode" );
@@ -1252,6 +1254,13 @@ int main( int argc, char **argv )
     }
     if ( Mode >= 0 && Calculator != 602 ) {
         error( "@mode is only used on the FX-602P" );
+    }
+    if ( Mode < 0 && Calculator == 602 && RawHeaderLen > 0 ) {
+        /*
+         *  The memory partition of the raw header, without registers
+         *  beyond 512 steps
+         */
+        Mode = RawHeader[ 0 ] <= 0x40 ? 84 - RawHeader[ 0 ] : 0;
     }
     if ( Mode < 0 ) {
         Mode = MODE;
