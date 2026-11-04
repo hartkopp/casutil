@@ -14,6 +14,7 @@
  *    -u       use UTF-8 characters instead of ASCII
  *    -s       show the step numbers
  *    -x       show the hex codes of all steps and the step numbers
+ *    -m       annotate the music of the FA-1/FA-2: notes, rests and tempo
  *
  *  Each file starts with comment lines describing the file for prg602:
  *    # @calculator 602, 601, 502 or 501
@@ -46,6 +47,10 @@
 #define MAX_BYTES  0x10000    /* more than any tape file */
 #define LEAD_IN    -1         /* lead-in marker in the input buffer */
 #define DISPLAY_LEN   16      /* bytes of alpha display data */
+#define TOKEN_POINT   0x0E    /* . */
+#define TOKEN_EXP     0x0F    /* EXP */
+#define TOKEN_PLUS    0x5C    /* + */
+#define TOKEN_MINUS   0x5D    /* - */
 #define DISPLAY_CHARS 11      /* characters shown in the display */
 #define PARTITION601  0x10    /* FX-601P: 128 steps */
 #define MAX_PARTITION 0x40    /* MODE . 20: 512 steps */
@@ -60,6 +65,7 @@ bool Utf8 = false;
 bool ShowHex = false;
 bool ShowSteps = false;
 bool File502 = false;         /* file of the FX-501P/FX-502P */
+bool Music = false;           /* option -m: annotate the music of the FA-1/FA-2 */
 
 /*
  *  Input buffer, filled by the reading routines
@@ -68,6 +74,7 @@ int Data[ MAX_BYTES ];
 int Errors[ MAX_BYTES ];      /* read errors of the bytes in Data[] */
 int Count = 0;
 int FileStart = 0;            /* header of the current file in Data[] */
+int MusicNotes[ 9 ][ 11 ];    /* note codes of the registers in the file */
 bool Remarks = false;         /* remarks at the end of the current file */
 
 /*
@@ -121,12 +128,71 @@ bool printErrors( const char *prefix, int start, int end )
 
 /*
  *  End the line of a step or register in Data[ start ] .. Data[ end - 1 ]
- *  with a comment on read errors
+ *  with a comment: the remark, if not NULL, and the read errors
+ */
+void endLineWith( const char *remark, int start, int end )
+{
+    if ( remark != NULL ) {
+        printf( "  # %s", remark );
+    }
+    printErrors( remark != NULL ? "," : "  #", start, end );
+    printf( "\n" );
+}
+
+
+/*
+ *  End the line of a step or register with a comment on read errors
  */
 void endLine( int start, int end )
 {
-    printErrors( "  #", start, end );
-    printf( "\n" );
+    endLineWith( NULL, start, end );
+}
+
+
+/*
+ *  Music of the FA-1/FA-2 (option -m): the registers hold the note codes,
+ *  MF the tempo code, the memory operations of the program play a note
+ *  of the register with their length, followed by EXP a rest.
+ *  Note codes of C3..B3, C4..B4 and C5..B5 from the manual of the FA-2,
+ *  123 is the middle C.
+ */
+const int NoteCodes[ 36 ] = {
+    248, 234, 221, 209, 197, 185, 175, 165, 156, 147, 139, 131,
+    123, 116, 110, 103,  97,  92,  87,  82,  77,  72,  68,  64,
+     61,  57,  54,  51,  48,  45,  42,  40,  37,  35,  33,  31
+};
+const char *NoteNames[ 12 ] = {
+    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+};
+const char *NoteLengths[ 5 ] = {   /* X<->M, Min, MR, M-, M+ */
+    "16th", "eighth", "quarter", "half", "whole"
+};
+
+
+/*
+ *  Decode a memory operation including the prefix offset: the operation
+ *  0..4 (X<->M, Min, MR, M-, M+) and the register group and index
+ *  Returns false if the token isn't a memory operation
+ */
+bool memoryOp( int token, int offset, int *op, int *group, int *index )
+{
+    int row = token >> 4;
+    int col = token & 0x0F;
+
+    if ( row >= 0x5 && row <= 0xE && col <= 9 ) {
+        *op = ( row - 5 ) % 5;
+        *group = offset / 10 + ( row >= 0xA ? 1 : 0 );
+        *index = col;
+    }
+    else if ( row == 0xF && col <= 9 ) {
+        *op = col % 5;
+        *group = offset / 10 + ( col >= 5 ? 1 : 0 );
+        *index = 10;
+    }
+    else {
+        return false;
+    }
+    return true;
 }
 
 
@@ -136,22 +202,10 @@ void endLine( int start, int end )
  */
 bool memoryName( char *buffer, int token, int offset )
 {
-    int row = token >> 4;
-    int col = token & 0x0F;
     int op, group, index;
     char reg[ 16 ];
 
-    if ( row >= 0x5 && row <= 0xE && col <= 9 ) {
-        op = ( row - 5 ) % 5;
-        group = offset / 10 + ( row >= 0xA ? 1 : 0 );
-        index = col;
-    }
-    else if ( row == 0xF && col <= 9 ) {
-        op = col % 5;
-        group = offset / 10 + ( col >= 5 ? 1 : 0 );
-        index = 10;
-    }
-    else {
+    if ( !memoryOp( token, offset, &op, &group, &index ) ) {
         return false;
     }
     if ( File502 && group <= 1 ) {
@@ -431,9 +485,127 @@ bool isLossless( const int *p )
 
 
 /*
- *  Print the data register at Data[ i ]
+ *  Value of the register at p, if it is an integer 0..999
+ *  Returns -1 otherwise
  */
-void printRegister( int i )
+int registerInteger( const int *p )
+{
+    int digits[ 10 ];
+    int exponent, value = 0, i;
+
+    if ( !isRegister( p ) || p[ 1 ] >= 5 ) {
+        return -1;
+    }
+    digits[ 0 ] = p[ 7 ] & 0x0F;
+    for ( i = 1; i < 9; ++i ) {
+        int b = p[ 6 - ( i - 1 ) / 2 ];
+        digits[ i ] = i % 2 ? b >> 4 : b & 0x0F;
+    }
+    digits[ 9 ] = p[ 2 ] >> 4;
+    exponent = ( p[ 1 ] % 5 ) * 100 + ( p[ 0 ] >> 4 ) * 10 + ( p[ 0 ] & 0x0F ) - 100;
+    for ( i = 0; i < 10; ++i ) {
+        if ( i <= exponent ) {
+            value = value * 10 + digits[ i ];
+        }
+        else if ( digits[ i ] != 0 ) {
+            return -1;
+        }
+    }
+    return exponent <= 2 ? value : -1;
+}
+
+
+/*
+ *  Name of a note code, e.g. C4, NULL if it isn't a note code
+ */
+const char *noteName( int code )
+{
+    static char buffer[ 8 ];
+    int i;
+
+    for ( i = 0; i < 36; ++i ) {
+        if ( NoteCodes[ i ] == code ) {
+            sprintf( buffer, "%s%d", NoteNames[ i % 12 ], 3 + i / 12 );
+            return buffer;
+        }
+    }
+    return NULL;
+}
+
+
+/*
+ *  Remark of option -m on the register at Data[ i ]: the tempo of the
+ *  tempo code in MF, otherwise the note of a note code
+ */
+const char *registerRemark( int i, bool tempo )
+{
+    static char buffer[ 32 ];
+    int value = registerInteger( Data + i );
+
+    if ( !Music ) {
+        return NULL;
+    }
+    if ( tempo ) {
+        if ( value < 0 || value > 9 ) {
+            return NULL;
+        }
+        sprintf( buffer, "tempo %d", ( value + 1 ) * ( File502 ? 28 : 40 ) );
+        return buffer;
+    }
+    return noteName( value );
+}
+
+
+/*
+ *  Remark of option -m on the step Data[ i ] .. Data[ i + len - 1 ] with
+ *  the token and the prefix offset: a memory operation plays a note of
+ *  its length with the note code of the register, if the file holds the
+ *  registers, or a rest if EXP follows. On the FX-501P/FX-502P, a point
+ *  in front marks a dotted note. + and - bind notes.
+ */
+const char *stepRemark( int token, int offset, int i, int len )
+{
+    static char buffer[ 32 ];
+    int op, group, index;
+    const char *note;
+
+    if ( !Music ) {
+        return NULL;
+    }
+    if ( !memoryOp( token, offset, &op, &group, &index ) ) {
+        return token == TOKEN_PLUS ? "slur" : token == TOKEN_MINUS ? "tie" : NULL;
+    }
+    note = group < 9 ? noteName( MusicNotes[ group ][ index ] ) : NULL;
+    sprintf( buffer, "%s%s %s",
+             File502 && i > FileStart && Data[ i - 1 ] == TOKEN_POINT ? "dotted " : "",
+             NoteLengths[ op ],
+             i + len < Count && Data[ i + len ] == TOKEN_EXP ? "rest"
+             : note != NULL ? note : "note" );
+    return buffer;
+}
+
+
+/*
+ *  Store the note codes of the registers Data[ start ] .. Data[ end - 1 ]
+ *  in the order M00..M09, MF, M10.. for the remarks of option -m
+ */
+void findNotes( int start, int end )
+{
+    int i, n;
+
+    for ( n = 0; n < 9 * 11; ++n ) {
+        MusicNotes[ n / 11 ][ n % 11 ] = -1;
+    }
+    for ( i = start, n = 0; i + REG_LEN <= end && n < 9 * 11; i += REG_LEN, ++n ) {
+        MusicNotes[ n / 11 ][ n % 11 ] = registerInteger( Data + i );
+    }
+}
+
+
+/*
+ *  Print the data register at Data[ i ], remark is a comment or NULL
+ */
+void printRegister( int i, const char *remark )
 {
     if ( isRegister( Data + i ) ) {
         printNumber( Data + i );
@@ -464,7 +636,7 @@ void printRegister( int i )
         }
         printf( "]" );
     }
-    endLine( i, i + REG_LEN );
+    endLineWith( remark, i, i + REG_LEN );
 }
 
 
@@ -479,7 +651,7 @@ void listParentheses( int start, int first, int count )
     printf( "\n*** L registers\n\n" );
     for ( n = first; n < count; ++n ) {
         printf( "[%02d] = ", n );
-        printRegister( start + n * REG_LEN );
+        printRegister( start + n * REG_LEN, registerRemark( start + n * REG_LEN, false ) );
     }
 }
 
@@ -496,7 +668,7 @@ void listRegisters( int start, int end )
     for ( i = start, n = 0; i + REG_LEN <= end; i += REG_LEN, ++n ) {
         registerName( reg, n / 11, n % 11 );
         printf( "M%-3s = ", reg );
-        printRegister( i );
+        printRegister( i, registerRemark( i, n == 10 ) );
     }
 }
 
@@ -688,7 +860,7 @@ void listProgram( int start, int end )
             if ( memoryName( buffer, t, offset ) ) {
                 stepStart( ++step, i, 2 );
                 printf( "%s", buffer );
-                endLine( i, i + 2 );
+                endLineWith( stepRemark( t, offset, i, 2 ), i, i + 2 );
                 ++step;
                 i += 2;
                 continue;
@@ -713,7 +885,7 @@ void listProgram( int start, int end )
         else {
             printf( "[%02X]", c );
         }
-        endLine( i, i + 1 );
+        endLineWith( stepRemark( c, 0, i, 1 ), i, i + 1 );
         ++i;
     }
 
@@ -1259,6 +1431,7 @@ int listFile( int start, int header_len, int end )
     }
     printf( "\n" );
 
+    findNotes( data, data_end );
     if ( display_number ) {
         printf( "Display = " );
         printNumber( Data + body );
@@ -1384,7 +1557,7 @@ bool isHeader502( int pos, int end )
  *             footer. The registers are stored in reverse order in groups
  *             of 11: MF, M9..M0, then M.F, M.9..M.0 on the FX-502P. The
  *             FX-501P has only M0..M9 and MF, the 5 other registers are
- *             the L registers for parentheses, which the FA-2 uses for
+ *             the L registers for parentheses, which the FA-1/FA-2 use for
  *             note codes in the music function. They are listed with
  *             their position in the file. The statistic function of the
  *             FX-501P uses M9 (n), M8 (sum x) and M7 (sum x^2), which are
@@ -1403,6 +1576,7 @@ int listFile502( int start, int end )
     int after, prog_end = body, count = 0;
 
     File502 = true;
+    findNotes( 0, 0 );
     if ( program ) {
         /*
          *  The program ends with the first 0xFF, the unused steps and
@@ -1467,7 +1641,8 @@ int listFile502( int start, int end )
                 sprintf( reg, "%sF", group ? "." : "" );
             }
             printf( "M%-3s = ", reg );
-            printRegister( body + pos * REG_LEN );
+            printRegister( body + pos * REG_LEN,
+                           registerRemark( body + pos * REG_LEN, group == 0 && index == 10 ) );
         }
         if ( numbered < count ) {
             listParentheses( body, numbered, count );
@@ -1624,6 +1799,9 @@ int main( int argc, char **argv )
         if ( strncmp( argv[ 1 ], "-x", 2 ) == 0 ) {
             ShowHex = ShowSteps = true;
         }
+        if ( strncmp( argv[ 1 ], "-m", 2 ) == 0 ) {
+            Music = true;
+        }
         ++argv;
         --argc;
     }
@@ -1637,7 +1815,9 @@ int main( int argc, char **argv )
                 "         -u uses UTF-8 characters instead of ASCII\n"
                 "         -s shows the step numbers\n"
                 "         -x shows the hex codes of all steps and the "
-                           "step numbers\n" );
+                           "step numbers\n"
+                "         -m annotates the music of the FA-1/FA-2: notes, rests "
+                           "and tempo\n" );
         return 2;
     }
 

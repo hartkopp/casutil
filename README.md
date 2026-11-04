@@ -221,7 +221,8 @@ standard output.
   and on the FX-502P M.0..M.9, M.F. Binary files are also accepted in the format of the
   FX-602P simulator by Martin Krischik. `-u` shows symbols like `↔`, `π`
   and `√` in UTF-8, `-s` adds the step numbers as shown by the calculator
-  in WRT mode, `-x` the hex codes of all steps and the step numbers. Codes
+  in WRT mode, `-x` the hex codes of all steps and the step numbers, `-m`
+  annotates the notes, rests and tempo of music for the FA-1/FA-2. Codes
   without known meaning, e.g. from synthetic programming, are shown as `[XX]`,
   unknown alpha characters as `\XX`. Each file starts with the comment
   lines `# @calculator`, `# @file`, `# @name` or `# @number` and
