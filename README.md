@@ -265,7 +265,7 @@ programs:
   | Line | Values | Default | Option |
   |------|--------|---------|--------|
   | `# @calculator` | `602`, `601`, `502`, `501` | `602` | `-c<calc>` |
-  | `# @file` | `program`, `data`, `all`, `display` | from the content | |
+  | `# @file` | `program`, `single`, `data`, `all`, `display` | from the content | |
   | `# @name` | `"name"`, up to 6 characters (FX-601P/FX-602P) | no name | `-n<name>` |
   | `# @number` | `0`..`999` | no name | `-f<number>` |
   | `# @mode` | memory partition `.20`..`.80` (FX-602P), `.81`..`.84` synthetic | `.20` | |

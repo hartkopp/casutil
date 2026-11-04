@@ -22,6 +22,7 @@
  *  only the displayed number as one register or the alpha text.
  */
 #define TYPE_PROGRAM 0x0E
+#define TYPE_SINGLE  0x09     /* single program P0..P9: its number 0x00..0x09 */
 #define TYPE_ALL     0x1F
 #define TYPE_DATA    0x40
 

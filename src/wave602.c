@@ -31,6 +31,7 @@
 #define NAME_PADDING 0x0F     /* fills short names from the left */
 
 #define TYPE602_PROGRAM 0x0E  /* FX-602P file types, header byte 1 */
+#define TYPE602_SINGLE  0x09  /* single program P0..P9: 0x00..0x09 */
 #define TYPE602_ALL     0x1F
 #define TYPE602_DATA    0x40
 #define TYPE502_PROGRAM 0xB   /* FX-502P file types, high nibble of byte 1 */
@@ -136,7 +137,7 @@ bool isHeader502( const unsigned char *h )
 bool isHeader602( const unsigned char *h )
 {
     return h[ 1 ] == TYPE602_PROGRAM || h[ 1 ] == TYPE602_ALL
-        || h[ 1 ] == TYPE602_DATA;
+        || h[ 1 ] == TYPE602_DATA || h[ 1 ] <= TYPE602_SINGLE;
 }
 
 

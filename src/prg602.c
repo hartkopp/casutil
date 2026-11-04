@@ -17,7 +17,8 @@
  *  Input format:
  *    # @key value  describes the file, the options take precedence:
  *      # @calculator 602, 601, 502 or 501 (default 602)
- *      # @file program, data, all or display (default from the content)
+ *      # @file program, single, data, all or display (default from the
+ *        content), single is the only program Pn as saved by SAVE Pn EXE
  *      # @name "name" or # @number n (default: no name)
  *      # @mode .nn, the memory partition of the FX-602P (default .20),
  *        .81 .. .84 are synthetic partitions with 24 .. 0 steps
@@ -67,8 +68,8 @@
 /*
  *  File types of # @file
  */
-enum { FILE_PROGRAM, FILE_DATA, FILE_ALL, FILE_DISPLAY };
-const char *FileTypes[] = { "program", "data", "all", "display" };
+enum { FILE_PROGRAM, FILE_DATA, FILE_ALL, FILE_DISPLAY, FILE_SINGLE };
+const char *FileTypes[] = { "program", "data", "all", "display", "single" };
 
 /*
  *  A data register from the listing
@@ -115,6 +116,9 @@ int NameCodes[ NAME_LEN ];    /* file name */
 int NameLen = -1;
 int RawHeader[ HEADER_LEN ];  /* header bytes of # @rawheader */
 int RawHeaderLen = 0;
+
+int Programs = 0;             /* number of sections *** Pn */
+int FirstProgram = -1;        /* n of the first section *** Pn */
 
 int LineNo = 0;
 
@@ -724,15 +728,16 @@ bool directive( const char *p )
         setOnce( &Calculator, calculator, "calculator" );
     }
     else if ( len == 4 && strncmp( key, "file", len ) == 0 ) {
-        for ( i = 0; i < 4; ++i ) {
+        for ( i = 0; i < 5; ++i ) {
             if ( (int) strlen( FileTypes[ i ] ) == fieldLength( value )
                  && strncmp( value, FileTypes[ i ], fieldLength( value ) ) == 0 )
             {
                 break;
             }
         }
-        if ( i == 4 ) {
-            error( "Unknown file type \"%.*s\", use program, data, all or display",
+        if ( i == 5 ) {
+            error( "Unknown file type \"%.*s\", use program, single, data, all "
+                   "or display",
                    fieldLength( value ), value );
         }
         setOnce( &FileType, i, "file" );
@@ -936,6 +941,9 @@ void translateLine( char *line )
         const char *q = skipBlanks( text + 3 );
 
         if ( q[ 0 ] == 'P' && isdigit( (unsigned char) q[ 1 ] ) && q[ 2 ] == '\0' ) {
+            if ( Programs++ == 0 ) {
+                FirstProgram = q[ 1 ] - '0';
+            }
             emit( q[ 1 ] - '0' );
         }
         else if ( strcmp( q, "No program" ) != 0 && strcmp( q, "Data" ) != 0
@@ -1274,19 +1282,25 @@ int main( int argc, char **argv )
                  : RegisterCount == 0 ? FILE_PROGRAM
                  : Count == 0 ? FILE_DATA : FILE_ALL;
     }
-    if ( ( FileType == FILE_PROGRAM && Count == 0 )
+    if ( ( ( FileType == FILE_PROGRAM || FileType == FILE_SINGLE ) && Count == 0 )
          || ( FileType == FILE_DISPLAY && !DisplayGiven ) )
     {
-        error( "No %s found", FileType == FILE_PROGRAM ? "program" : "display" );
+        error( "No %s found", FileType == FILE_DISPLAY ? "display" : "program" );
     }
-    if ( ( FileType != FILE_PROGRAM && FileType != FILE_ALL && Count > 0 )
-         || ( ( FileType == FILE_PROGRAM || FileType == FILE_DISPLAY )
-              && RegisterCount > 0 )
+    if ( FileType == FILE_SINGLE && ( Programs != 1 || Code[ 0 ] != FirstProgram ) ) {
+        error( "A single program file contains exactly one program *** Pn" );
+    }
+    if ( ( FileType != FILE_PROGRAM && FileType != FILE_SINGLE && FileType != FILE_ALL
+           && Count > 0 )
+         || ( ( FileType == FILE_PROGRAM || FileType == FILE_SINGLE
+                || FileType == FILE_DISPLAY ) && RegisterCount > 0 )
          || ( FileType != FILE_DISPLAY && DisplayGiven ) )
     {
         error( "The contents do not match the file type %s", FileTypes[ FileType ] );
     }
-    if ( fx502 && ( FileType == FILE_ALL || FileType == FILE_DISPLAY ) ) {
+    if ( fx502 && ( FileType == FILE_ALL || FileType == FILE_DISPLAY
+                    || FileType == FILE_SINGLE ) )
+    {
         error( "The FX-501P/FX-502P cannot save %s files", FileTypes[ FileType ] );
     }
 
@@ -1302,6 +1316,7 @@ int main( int argc, char **argv )
     else {
         out[ 0 ] = (unsigned char) ( Calculator == 601 ? PARTITION601 : 84 - Mode );
         out[ 1 ] = (unsigned char) ( FileType == FILE_PROGRAM ? TYPE_PROGRAM
+                                   : FileType == FILE_SINGLE ? FirstProgram
                                    : FileType == FILE_ALL ? TYPE_ALL : TYPE_DATA );
         setName602( out );
         len = HEADER_LEN;
@@ -1331,7 +1346,7 @@ int main( int argc, char **argv )
      *  Program: FX-501P/FX-502P the whole program area, FX-601P/FX-602P
      *  terminated by 0xFF, in an "all" file the whole program area
      */
-    if ( FileType == FILE_PROGRAM || FileType == FILE_ALL ) {
+    if ( FileType == FILE_PROGRAM || FileType == FILE_SINGLE || FileType == FILE_ALL ) {
         int steps = Calculator == 501 ? STEPS501 : Calculator == 502 ? STEPS502
                   : out[ 0 ] * 8;
 

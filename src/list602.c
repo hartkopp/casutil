@@ -17,7 +17,7 @@
  *
  *  Each file starts with comment lines describing the file for prg602:
  *    # @calculator 602, 601, 502 or 501
- *    # @file program, data, all or display
+ *    # @file program, single, data, all or display
  *    # @name "name" or # @number n, missing if the file has no name
  *    # @mode .nn, the memory partition of the FX-602P
  *
@@ -926,6 +926,7 @@ bool isHeaderDescribed( const int *h, bool fx601, const char *file )
 
     e[ 0 ] = fx601 ? PARTITION601 : h[ 0 ] <= MAX_PARTITION ? h[ 0 ] : MAX_PARTITION;
     e[ 1 ] = strcmp( file, "program" ) == 0 ? TYPE_PROGRAM
+           : strcmp( file, "single" ) == 0 ? h[ 1 ]
            : strcmp( file, "all" ) == 0 ? TYPE_ALL : TYPE_DATA;
     number = decodeName( h, codes, &len );
     if ( number == -2 ) {
@@ -1189,6 +1190,14 @@ int listFile( int start, int header_len, int end )
             data_footer = footer2 < end;
         }
         file = data_end > data ? "all" : "program";
+        if ( data_end == data && h[ 1 ] <= TYPE_SINGLE && body < end
+             && Data[ body ] == h[ 1 ] )
+        {
+            /*
+             *  A single program Pn saved by SAVE Pn EXE, the type is n
+             */
+            file = "single";
+        }
         if ( data_end == data && after < end && Data[ after ] == 0xFF ) {
             /*
              *  The program ends with 0xFF in front of the footer
@@ -1240,7 +1249,9 @@ int listFile( int start, int header_len, int end )
         }
         printf( "\n" );
     }
-    else if ( h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA ) {
+    else if ( h[ 1 ] != TYPE_PROGRAM && h[ 1 ] != TYPE_ALL && h[ 1 ] != TYPE_DATA
+              && strcmp( file, "single" ) != 0 )
+    {
         printf( "# Unknown file type %02X %02X\n", h[ 0 ], h[ 1 ] );
     }
     if ( printErrors( "# Read error in the header:", start, body ) ) {
@@ -1307,7 +1318,9 @@ int listFile( int start, int header_len, int end )
             }
         }
     }
-    if ( strcmp( file, "program" ) == 0 && prog_end == end ) {
+    if ( ( strcmp( file, "program" ) == 0 || strcmp( file, "single" ) == 0 )
+         && prog_end == end )
+    {
         /*
          *  The program is complete with the 0xFF in front of the footer
          */
@@ -1340,7 +1353,8 @@ bool isHeader602( int pos, int end )
     int type = Data[ pos + 1 ];
 
     return pos + HEADER_LEN <= end && Data[ pos ] >= 0x04 && Data[ pos ] <= 0x40
-        && ( type == TYPE_PROGRAM || type == TYPE_ALL || type == TYPE_DATA );
+        && ( type == TYPE_PROGRAM || type == TYPE_ALL || type == TYPE_DATA
+             || type <= TYPE_SINGLE );
 }
 
 
