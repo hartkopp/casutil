@@ -1326,6 +1326,19 @@ int listFile( int start, int header_len, int end )
 
 
 /*
+ *  Check for the header of an FX-601P/FX-602P file at Data[ pos ] with a
+ *  memory partition and a known file type
+ */
+bool isHeader602( int pos, int end )
+{
+    int type = Data[ pos + 1 ];
+
+    return pos + HEADER_LEN <= end && Data[ pos ] >= 0x04 && Data[ pos ] <= 0x40
+        && ( type == TYPE_PROGRAM || type == TYPE_ALL || type == TYPE_DATA );
+}
+
+
+/*
  *  Check for the header of an FX-501P/FX-502P file at Data[ pos ]
  */
 bool isHeader502( int pos, int end )
@@ -1568,7 +1581,7 @@ int main( int argc, char **argv )
     bool wavemode = false;
     bool ignore = false;
     int starts[ 100 ];
-    int files, f, pos, i;
+    int files, f, pos, i, limit;
 
     while ( argc > 1 && argv[ 1 ][ 0 ] == '-' ) {
 
@@ -1639,13 +1652,27 @@ int main( int argc, char **argv )
         if ( f < files && starts[ f ] < pos + HEADER_LEN ) {
             header_len = starts[ f ] - pos;
         }
+
+        /*
+         *  A file ends at the latest with a lead-in followed by the header
+         *  of the next file, e.g. if the end of a file is missing
+         */
+        for ( i = f; i < files && starts[ i ] < pos + HEADER_LEN; ++i )
+            ;
+        while ( i < files && !isHeader602( starts[ i ], Count )
+                && !isHeader502( starts[ i ], Count ) )
+        {
+            ++i;
+        }
+        limit = i < files ? starts[ i ] : Count;
+
         FileStart = pos;
         Remarks = false;
-        if ( isHeader502( pos, Count ) ) {
-            pos = listFile502( pos, Count );
+        if ( isHeader502( pos, limit ) ) {
+            pos = listFile502( pos, limit );
         }
         else {
-            pos = listFile( pos, header_len, Count );
+            pos = listFile( pos, header_len, limit );
         }
         while ( f < files && starts[ f ] < pos ) {
             ++f;
