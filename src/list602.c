@@ -48,7 +48,6 @@
 #define LEAD_IN    -1         /* lead-in marker in the input buffer */
 #define DISPLAY_LEN   16      /* bytes of alpha display data */
 #define TOKEN_POINT   0x0E    /* . */
-#define TOKEN_EXP     0x0F    /* EXP */
 #define TOKEN_PLUS    0x5C    /* + */
 #define TOKEN_MINUS   0x5D    /* - */
 #define DISPLAY_CHARS 11      /* characters shown in the display */
@@ -152,15 +151,17 @@ void endLine( int start, int end )
 /*
  *  Music of the FA-1/FA-2 (option -m): the registers hold the note codes,
  *  MF the tempo code, the memory operations of the program play a note
- *  of the register with their length, followed by EXP a rest.
+ *  of the register with their length, the register F (key EXP) a rest.
  *  Note codes of C3..B3, C4..B4 and C5..B5 from the manual of the FA-2,
- *  123 is the middle C.
+ *  123 is the middle C, and C6 and E6 from the program library.
  */
 const int NoteCodes[ 36 ] = {
     248, 234, 221, 209, 197, 185, 175, 165, 156, 147, 139, 131,
     123, 116, 110, 103,  97,  92,  87,  82,  77,  72,  68,  64,
      61,  57,  54,  51,  48,  45,  42,  40,  37,  35,  33,  31
 };
+const int HighNoteCodes[ 2 ] = { 29, 23 };
+const char *HighNoteNames[ 2 ] = { "C6", "E6" };
 const char *NoteNames[ 12 ] = {
     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
 };
@@ -529,6 +530,11 @@ const char *noteName( int code )
             return buffer;
         }
     }
+    for ( i = 0; i < 2; ++i ) {
+        if ( HighNoteCodes[ i ] == code ) {
+            return HighNoteNames[ i ];
+        }
+    }
     return NULL;
 }
 
@@ -560,8 +566,8 @@ const char *registerRemark( int i, bool tempo )
  *  Remark of option -m on the step Data[ i ] .. Data[ i + len - 1 ] with
  *  the token and the prefix offset: a memory operation plays a note of
  *  its length with the note code of the register, if the file holds the
- *  registers, or a rest if EXP follows. On the FX-501P/FX-502P, a point
- *  in front marks a dotted note. + and - bind notes.
+ *  registers, or a rest with the register F. On the FX-501P/FX-502P, a
+ *  point in front marks a dotted note. + and - bind notes.
  */
 const char *stepRemark( int token, int offset, int i, int len )
 {
@@ -579,8 +585,7 @@ const char *stepRemark( int token, int offset, int i, int len )
     sprintf( buffer, "%s%s %s",
              File502 && i > FileStart && Data[ i - 1 ] == TOKEN_POINT ? "dotted " : "",
              NoteLengths[ op ],
-             i + len < Count && Data[ i + len ] == TOKEN_EXP ? "rest"
-             : note != NULL ? note : "note" );
+             group == 0 && index == 10 ? "rest" : note != NULL ? note : "note" );
     return buffer;
 }
 
