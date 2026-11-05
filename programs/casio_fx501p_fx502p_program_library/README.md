@@ -9,8 +9,7 @@ Each line of a listing is a line of the program sheet, the comment behind it
 is the step number of the sheet at the end of the line. `# @number` is the
 file number: 100 for the first chapter plus 50 for each further chapter plus
 the number of the program in its chapter (Mathematics 101.., Electrical
-engineering 151.., Mechanics 201.., ...). The numbers 401..438 are reserved
-for the 38 programs of the chapter Surveying, which is not transcribed yet.
+engineering 151.., Mechanics 201.., ..., Surveying 401..438).
 
 The listing follows the sheet, including its errors, so that it can be
 compared with the sheet while keying it in. Where the sheet has an error,
@@ -180,6 +179,52 @@ of the program fit into the FX-501P.
 | 356 | [MED06](medicine/MED06.prg) | Saturated and normal oxygen contents of blood | [MED05](../casio_fx601p_fx602p_program_library/medicine/MED05.prg) |
 | 357 | [MED07](medicine/MED07.prg) | Discomfort index | – |
 
+## Surveying
+
+The chapter Surveying (測量) has no counterpart in the FX-601P/FX-602P
+library. All its programs reproduce the examples of their sheets.
+
+| No. | Program | Title | FX-602P |
+|---|---|---|---|
+| 401 | [SURV01](surveying/SURV01.prg) | Addition, subtraction, multiplication and division of angles | – |
+| 402 | [SURV02](surveying/SURV02.prg) | Coordinates from azimuth and distance | – |
+| 403 | [SURV03](surveying/SURV03.prg) | Branched traverse | – |
+| 404 | [SURV04](surveying/SURV04.prg) | Open traverse 1 | – |
+| 405 | [SURV05](surveying/SURV05.prg) | Open traverse 2 | – |
+| 406 | [SURV06](surveying/SURV06.prg) | Inverse calculation (single, radial) | – |
+| 407 | [SURV07](surveying/SURV07.prg) | Inverse calculation (continuous) | – |
+| 408 | [SURV08](surveying/SURV08.prg) | Triangle 1 (third side from two sides and the included angle) | – |
+| 409 | [SURV09](surveying/SURV09.prg) | Triangle 2 (area from two sides and the included angle) | – |
+| 410 | [SURV10](surveying/SURV10.prg) | Triangle 3 (area and heights from three sides) | – |
+| 411 | [SURV11](surveying/SURV11.prg) | Solution of a triangle 1 (three sides known) | – |
+| 412 | [SURV12](surveying/SURV12.prg) | Solution of a triangle 2 (two sides and the included angle known) | – |
+| 413 | [SURV13](surveying/SURV13.prg) | Solution of a triangle 3 (one side and the two adjacent angles known) | – |
+| 414 | [SURV14](surveying/SURV14.prg) | Area by three sides (triangulated area) | – |
+| 415 | [SURV15](surveying/SURV15.prg) | Area from coordinates | – |
+| 416 | [SURV16](surveying/SURV16.prg) | Area from angles and distances | – |
+| 417 | [SURV17](surveying/SURV17.prg) | Closed traverse (angle closing error) | – |
+| 418 | [SURV18](surveying/SURV18.prg) | Closed traverse (closing error, precision, adjustment) | – |
+| 419 | [SURV19](surveying/SURV19.prg) | Stadia calculation | – |
+| 420 | [SURV20](surveying/SURV20.prg) | Coordinates of an intermediate point | – |
+| 421 | [SURV21](surveying/SURV21.prg) | Perpendicular and distance 1 (three points known) | – |
+| 422 | [SURV22](surveying/SURV22.prg) | Perpendicular and distance 2 (two points and one azimuth known) | – |
+| 423 | [SURV23](surveying/SURV23.prg) | Intersection 1 (four points known) | – |
+| 424 | [SURV24](surveying/SURV24.prg) | Intersection 2 (three points and one azimuth known) | – |
+| 425 | [SURV25](surveying/SURV25.prg) | Intersection 3 (two points and two azimuths known) | – |
+| 426 | [SURV26](surveying/SURV26.prg) | Intersection 4 (circle and line) | – |
+| 427 | [SURV27](surveying/SURV27.prg) | Intersection 5 (circle and circle) | – |
+| 428 | [SURV28](surveying/SURV28.prg) | Simple curve | – |
+| 429 | [SURV29](surveying/SURV29.prg) | Area and arc of a circular segment from chord and radius | – |
+| 430 | [SURV30](surveying/SURV30.prg) | Vertical curve | – |
+| 431 | [SURV31](surveying/SURV31.prg) | Corner point of a street corner 1 (0 < theta < 90) | – |
+| 432 | [SURV32](surveying/SURV32.prg) | Corner point of a street corner 2 (90 < theta < 180) | – |
+| 433 | [SURV33](surveying/SURV33.prg) | Area by offsets (trapezoidal rule) | – |
+| 434 | [SURV34](surveying/SURV34.prg) | Corner cut-off | – |
+| 435 | [SURV35](surveying/SURV35.prg) | Division of a trapezoid area | – |
+| 436 | [SURV36](surveying/SURV36.prg) | Partition of a lot 1 (parallel to the opposite side) | – |
+| 437 | [SURV37](surveying/SURV37.prg) | Partition of a lot 2 (one point fixed) | – |
+| 438 | [SURV38](surveying/SURV38.prg) | Partition of a lot 3 (angle fixed) | – |
+
 ## Banking
 
 | No. | Program | Title | FX-602P |
@@ -234,10 +279,6 @@ of the program fit into the FX-501P.
 | 606 | [MUS06](music/MUS06.prg) | Tarantella napoletana (ナポリタン・タランテラ) | [MUS04](../casio_fx601p_fx602p_program_library/music/MUS04.prg) |
 | 606 | [MUS06D](music/MUS06D.prg) | Tarantella napoletana (ナポリタン・タランテラ), note and tempo data |  |
 
-## Surveying
-
-The 38 programs of the chapter Surveying (測量) have no counterpart in the
-FX-601P/FX-602P library and are not transcribed yet.
-
 The programs were converted from the original document by Claude Code. The step
-numbers of each listing are checked against the program sheet.
+numbers of each listing are checked against the program sheet, the programs of
+the chapter Surveying also against the examples of their sheets.
