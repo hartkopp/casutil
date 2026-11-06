@@ -32,6 +32,12 @@ the score. Each song uses one register per note, the tempo code in MF is 2
 FX-501P/FX-502P. Change single `Min` to `MR` (quarter) or `X<->M` (16th) to
 play the rhythm of the record.
 
+KW01 (Der Taschenrechner) has the rhythm of the record in its first two
+lines, taken from the melody track of the MIDI file "Kraftwerk - Pocket
+Calculator (the Mix, New Instruments)" (eighth, quarter and dotted quarter
+notes, MF = 4 plays 140 quarter notes per minute on the FX-501P/FX-502P),
+the header of the listing describes the matching.
+
 | No. | Title | FX-601P/FX-602P | FX-501P/FX-502P | File number | Steps |
 |---|---|---|---|---|---|
 | 01 | Der Taschenrechner | [KW01](fx602/KW01.prg) | [KW01](fx502/KW01.prg), [KW01D](fx502/KW01D.prg) | 701 | 75 |

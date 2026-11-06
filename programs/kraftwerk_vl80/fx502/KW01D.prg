@@ -18,5 +18,5 @@ M4   = 64   # B4
 M5   = 61   # C5
 M6   = 54   # D5
 
-# Tempo data, MF = 3 plays 112 quarter notes per minute
-MF   = 3
+# Tempo data, MF = 4 plays 140 quarter notes per minute
+MF   = 4
