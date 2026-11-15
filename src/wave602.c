@@ -28,6 +28,7 @@
 #define HEADER_LEN   8
 #define NAME_LEN     6
 #define LEAD_IN_TIME 50       /* tens of a second, as the FX-602P */
+#define TRAILER_LEN  8        /* bytes 0x00 behind the footer */
 #define NAME_PADDING 0x0F     /* fills short names from the left */
 
 #define TYPE602_PROGRAM 0x0E  /* FX-602P file types, header byte 1 */
@@ -266,16 +267,23 @@ int main( int argc, char **argv )
         perror( "write" );
         return 2;
     }
+    /*
+     *  The calculators write 0x00 behind the footer, the recordings show
+     *  7 bytes and the start of an 8th byte: complete them to 8 bytes,
+     *  e.g. for a file of the simulator without these bytes
+     */
+    for ( i = count; i > 0 && Data[ i - 1 ] == 0x00; --i ) {
+        ;
+    }
+    while ( count - i < TRAILER_LEN && count < MAX_BYTES ) {
+        Data[ count++ ] = 0x00;
+    }
     for ( i = 0; i < count; ++i ) {
         if ( 0 != kcsWriteByte( out, Data[ i ] ) ) {
             perror( "write" );
             return 2;
         }
     }
-    /*
-     *  Short leader for termination
-     */
-    kcsLeadIn( out, 1 );
     kcsClose( out );
 
     return 0;
