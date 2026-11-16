@@ -359,6 +359,26 @@ remote control program first:
 20 EXEC &HEE1F
 ```
 
+### Environment variables
+
+All programs, which read or write WAV files, evaluate these environment
+variables:
+
+| Variable | Values | Default | Meaning |
+|----------|--------|---------|---------|
+| `WAVE_PHASE` | `0`, `1` | `0` | `1` inverts the phase of the waves (low-high-low), like `-` behind the speed option, e.g. `-f-`; try it when a fast recording cannot be decoded or a created file cannot be loaded |
+| `WAVE_THRESHOLD` | number | `10` | threshold for the detection of the waves when reading; values above 10 help with very quiet recordings, normalizing the recording is better |
+| `WAVE_AUTOBIAS` | `0`, `1` | `0` | `1` detects the bias of the recording automatically when reading (experimental) |
+| `WAVE_AMPLITUDE` | `high:low` or one value for both, 1..100 | `80:80` | amplitude in percent of the high and the low frequency when writing; the high frequency is also used for the lead-in. The TI-74 mode writes its own wave form and ignores it |
+
+The original casioutil wrote the high frequency with 80 % and the low
+frequency with 100 %:
+
+```
+export WAVE_AMPLITUDE=80:100
+prg602 program.prg program.wav
+```
+
 
 ## MD-100 floppy disk images
 

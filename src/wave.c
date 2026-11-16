@@ -741,6 +741,14 @@ static int Threshold = 10;
  */
 static int AutoBias = 0;
 
+/*
+ *  Amplitude in percent of the high and the low frequency when writing
+ *  Can be set with environment variable WAVE_AMPLITUDE=high:low, e.g.
+ *  80:100 for the amplitudes of the original casioutil
+ */
+static int AmplitudeHigh = 80;
+static int AmplitudeLow = 80;
+
 
 /*
  *  Open a wave file for "Kansas City Standard" (KCS) encoded data
@@ -779,6 +787,35 @@ KCS_FILE *kcsOpen( char *filename,
     p = getenv( "WAVE_AUTOBIAS" );
     if ( p != NULL ) {
         AutoBias = ( 0 != atoi( p ) );
+    }
+
+    /*
+     *  get the amplitudes from environment: high:low or one value for
+     *  both, 1..100 percent
+     */
+    p = getenv( "WAVE_AMPLITUDE" );
+    if ( p != NULL ) {
+        int high, low;
+        int n = sscanf( p, "%d:%d", &high, &low );
+
+        if ( n == 1 ) {
+            low = high;
+        }
+        if ( n == 1 || n == 2 ) {
+            if ( high >= 1 && high <= 100 && low >= 1 && low <= 100 ) {
+                AmplitudeHigh = high;
+                AmplitudeLow = low;
+            }
+            else {
+                fprintf( stderr, "Ignoring WAVE_AMPLITUDE=%s, the amplitudes "
+                                 "must be 1..100 percent\n", p );
+            }
+        }
+        else {
+            fprintf( stderr, "Ignoring WAVE_AMPLITUDE=%s, the format is "
+                             "high:low or one value for both, e.g. 80:100\n",
+                     p );
+        }
     }
 
     /*
@@ -1732,7 +1769,8 @@ int kcsLeadIn( KCS_FILE *file, unsigned int tensOfSecs )
         }
     }
     else {
-        result = writeWave( file->file, freq, periods, 80, file->phase );
+        result = writeWave( file->file, freq, periods, AmplitudeHigh,
+                            file->phase );
     }
     return result;
 }
@@ -1745,7 +1783,7 @@ int kcsLeadOut( KCS_FILE *file, unsigned int periods )
 {
     uint32_t freq = file->carrier / 2;
 
-    return writeWave( file->file, freq, periods, 100, file->phase );
+    return writeWave( file->file, freq, periods, AmplitudeLow, file->phase );
 }
 
 
@@ -1757,7 +1795,7 @@ int kcsWriteBit( KCS_FILE *file, int bit )
     uint32_t freq    = bit ? file->carrier : file->carrier / 2;
     uint32_t periods = file->singleWave ? 1 : freq / file->baudrate;
     uint32_t i;
-    int amplitude = bit ? 80 : 100;
+    int amplitude = bit ? AmplitudeHigh : AmplitudeLow;
     int result = 0;
 
     if ( file->halfWave ) {
