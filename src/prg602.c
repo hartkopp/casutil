@@ -24,6 +24,9 @@
  *        .81 .. .84 are synthetic partitions with 24 .. 0 steps
  *      # @rawheader XX XX .., all bytes of the header, which replace the
  *        header created from the lines above
+ *      # @options header_only: only the lead-in and the header of the
+ *        FX-601P/FX-602P, which set the memory partition when loaded,
+ *        e.g. the synthetic ones; stop the waiting calculator with AC
  *    *** P0      starts a program, as printed by the FP-10
  *    steps       in ASCII or UTF-8 as listed by list602, e.g. LBL0, MR1F,
  *                FIX3, x^2 or x², one or more per line separated by
@@ -97,6 +100,7 @@ bool ProgramEnd = false;      /* \FF found, the end of the program */
 REGISTER Registers[ MAX_REGISTERS ];
 int RegisterCount = 0;
 bool DisplayGiven = false;
+bool HeaderOnly = false;      /* # @options header_only */
 bool DisplayIsText = false;
 REGISTER DisplayNumber;
 int DisplayText[ DISPLAY_CHARS ];
@@ -788,6 +792,23 @@ bool directive( const char *p )
             error( "Bytes in hex expected for @rawheader" );
         }
     }
+    else if ( len == 7 && strncmp( key, "options", len ) == 0 ) {
+        if ( *value == '\0' ) {
+            error( "Options expected for @options, e.g. header_only" );
+        }
+        while ( *value != '\0' ) {
+            int n = fieldLength( value );
+
+            if ( n == 11 && strncmp( value, "header_only", n ) == 0 ) {
+                HeaderOnly = true;
+            }
+            else {
+                error( "Unknown option \"%.*s\" for @options, use header_only",
+                       n, value );
+            }
+            value = skipBlanks( value + n );
+        }
+    }
     else if ( len > 0 && strspn( key, "0123456789" ) == (size_t) len ) {
         error( "Use \"# @calculator %.*s\"", len, key );
     }
@@ -1276,6 +1297,26 @@ int main( int argc, char **argv )
     }
 
     /*
+     *  A file with only the header, which sets the memory partition
+     */
+    if ( HeaderOnly ) {
+        if ( Calculator != 602 && Calculator != 601 ) {
+            error( "@options header_only is only used on the FX-601P/FX-602P" );
+        }
+        if ( Count > 0 || RegisterCount > 0 || DisplayGiven ) {
+            error( "A file with @options header_only has no programs, "
+                   "registers or display" );
+        }
+        if ( FileType < 0 ) {
+            FileType = FILE_ALL;
+        }
+        if ( FileType == FILE_SINGLE || FileType == FILE_DISPLAY ) {
+            error( "@options header_only is not used for %s files",
+                   FileTypes[ FileType ] );
+        }
+    }
+
+    /*
      *  The file type from the contents
      */
     if ( FileType < 0 ) {
@@ -1283,12 +1324,15 @@ int main( int argc, char **argv )
                  : RegisterCount == 0 ? FILE_PROGRAM
                  : Count == 0 ? FILE_DATA : FILE_ALL;
     }
-    if ( ( ( FileType == FILE_PROGRAM || FileType == FILE_SINGLE ) && Count == 0 )
-         || ( FileType == FILE_DISPLAY && !DisplayGiven ) )
+    if ( !HeaderOnly
+         && ( ( ( FileType == FILE_PROGRAM || FileType == FILE_SINGLE ) && Count == 0 )
+              || ( FileType == FILE_DISPLAY && !DisplayGiven ) ) )
     {
         error( "No %s found", FileType == FILE_DISPLAY ? "display" : "program" );
     }
-    if ( FileType == FILE_SINGLE && ( Programs != 1 || Code[ 0 ] != FirstProgram ) ) {
+    if ( !HeaderOnly && FileType == FILE_SINGLE
+         && ( Programs != 1 || Code[ 0 ] != FirstProgram ) )
+    {
         error( "A single program file contains exactly one program *** Pn" );
     }
     if ( ( FileType != FILE_PROGRAM && FileType != FILE_SINGLE && FileType != FILE_ALL
@@ -1344,72 +1388,78 @@ int main( int argc, char **argv )
     }
 
     /*
-     *  Program: FX-501P/FX-502P the whole program area, FX-601P/FX-602P
-     *  terminated by 0xFF, in an "all" file the whole program area
+     *  Contents, footer and trailer, not in a file with only the header:
+     *  the calculator would take any further byte as program step
      */
-    if ( FileType == FILE_PROGRAM || FileType == FILE_SINGLE || FileType == FILE_ALL ) {
-        int steps = Calculator == 501 ? STEPS501 : Calculator == 502 ? STEPS502
-                  : out[ 0 ] * 8;
+    if ( !HeaderOnly ) {
+        /*
+         *  Program: FX-501P/FX-502P the whole program area, FX-601P/FX-602P
+         *  terminated by 0xFF, in an "all" file the whole program area
+         */
+        if ( FileType == FILE_PROGRAM || FileType == FILE_SINGLE || FileType == FILE_ALL ) {
+            int steps = Calculator == 501 ? STEPS501 : Calculator == 502 ? STEPS502
+                      : out[ 0 ] * 8;
 
-        if ( Count > steps ) {
-            fprintf( stderr, "%s: the program has %d steps, the program area "
-                             "of the FX-%dP only %d\n",
-                     fx502 || FileType == FILE_ALL ? "Error" : "Warning",
-                     Count, Calculator, steps );
-            if ( fx502 || FileType == FILE_ALL ) {
-                return 1;
+            if ( Count > steps ) {
+                fprintf( stderr, "%s: the program has %d steps, the program area "
+                                 "of the FX-%dP only %d\n",
+                         fx502 || FileType == FILE_ALL ? "Error" : "Warning",
+                         Count, Calculator, steps );
+                if ( fx502 || FileType == FILE_ALL ) {
+                    return 1;
+                }
             }
-        }
-        for ( i = 0; i < Count; ++i ) {
-            out[ len++ ] = (unsigned char) Code[ i ];
-        }
-        if ( fx502 || FileType == FILE_ALL ) {
-            for ( ; i < steps; ++i ) {
+            for ( i = 0; i < Count; ++i ) {
+                out[ len++ ] = (unsigned char) Code[ i ];
+            }
+            if ( fx502 || FileType == FILE_ALL ) {
+                for ( ; i < steps; ++i ) {
+                    out[ len++ ] = 0xFF;
+                }
+            }
+            if ( !fx502 ) {
                 out[ len++ ] = 0xFF;
             }
         }
-        if ( !fx502 ) {
-            out[ len++ ] = 0xFF;
+
+        /*
+         *  Data registers, unlisted registers are 0
+         */
+        if ( FileType == FILE_DATA || FileType == FILE_ALL ) {
+            int count = registerCount();
+
+            memset( out + len, 0, count * REG_LEN );
+            for ( i = 0; i < RegisterCount; ++i ) {
+                encodeRegister( &Registers[ i ], fx502 ? 8 : 5,
+                                out + len + registerPosition( &Registers[ i ] ) * REG_LEN );
+            }
+            LineNo = 0;
+            len += count * REG_LEN;
         }
+
+        /*
+         *  Display data: a number or the alpha text
+         */
+        if ( FileType == FILE_DISPLAY ) {
+            if ( DisplayIsText ) {
+                encodeDisplay( out + len );
+                len += DISPLAY_LEN;
+            }
+            else {
+                encodeRegister( &DisplayNumber, 5, out + len );
+                len += REG_LEN;
+            }
+        }
+        memset( out + len, 0xFF, FOOTER_LEN );
+        len += FOOTER_LEN;
+
+        /*
+         *  The calculators write 0x00 behind the footer, the recordings show
+         *  7 bytes and the start of an 8th byte
+         */
+        memset( out + len, 0x00, TRAILER_LEN );
+        len += TRAILER_LEN;
     }
-
-    /*
-     *  Data registers, unlisted registers are 0
-     */
-    if ( FileType == FILE_DATA || FileType == FILE_ALL ) {
-        int count = registerCount();
-
-        memset( out + len, 0, count * REG_LEN );
-        for ( i = 0; i < RegisterCount; ++i ) {
-            encodeRegister( &Registers[ i ], fx502 ? 8 : 5,
-                            out + len + registerPosition( &Registers[ i ] ) * REG_LEN );
-        }
-        LineNo = 0;
-        len += count * REG_LEN;
-    }
-
-    /*
-     *  Display data: a number or the alpha text
-     */
-    if ( FileType == FILE_DISPLAY ) {
-        if ( DisplayIsText ) {
-            encodeDisplay( out + len );
-            len += DISPLAY_LEN;
-        }
-        else {
-            encodeRegister( &DisplayNumber, 5, out + len );
-            len += REG_LEN;
-        }
-    }
-    memset( out + len, 0xFF, FOOTER_LEN );
-    len += FOOTER_LEN;
-
-    /*
-     *  The calculators write 0x00 behind the footer, the recordings show
-     *  7 bytes and the start of an 8th byte
-     */
-    memset( out + len, 0x00, TRAILER_LEN );
-    len += TRAILER_LEN;
 
     if ( binary ) {
         FILE *outfp = fopen( argv[ 2 ], "wb" );
@@ -1439,6 +1489,12 @@ int main( int argc, char **argv )
                 perror( "write" );
                 return 2;
             }
+        }
+        if ( HeaderOnly ) {
+            /*
+             *  No lead-out, its low waves would look like a start bit
+             */
+            kcs->raw = 1;
         }
         kcsClose( kcs );
     }

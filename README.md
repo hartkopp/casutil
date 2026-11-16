@@ -271,11 +271,18 @@ programs:
   | `# @number` | `0`..`999` | no name | `-f<number>` |
   | `# @mode` | memory partition `.20`..`.80` (FX-602P), `.81`..`.84` synthetic | `.20` | |
   | `# @rawheader` | all bytes of the header in hex | | |
+  | `# @options` | `header_only` (FX-601P/FX-602P) | | |
 
   `601` is the FX-601P with 128 steps and 16 registers, `502` and `501`
   write the program area of 256 or 128 steps. `# @rawheader` replaces the
   header created from the other lines, which still describe the contents,
   `-n` and `-f` take precedence. An unknown key is an error.
+  `# @options header_only` writes only the lead-in and the header, which
+  sets the memory partition of the FX-602P when loaded, e.g. one of the
+  synthetic partitions `.81`..`.84`. The calculator then waits for the
+  contents, which never come, and is stopped with `AC`; the registers and
+  the programs keep their contents, `INV MAC` clears the programs. See
+  [doc/fx602.md](doc/fx602.md).
 - `*** P0`..`*** P9` start a program, as in the listings of the printer
   FP-10. `list602` writes one step per line and the number of steps behind
   each program as comment, e.g. `# 170 steps`, which includes the program
