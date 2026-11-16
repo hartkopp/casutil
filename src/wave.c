@@ -4,7 +4,8 @@
  *  Library to create or read wave files
  *
  *  Kansas City Standard formatted files are created uncompressed, 8 bit mono,
- *  with a sample rate of 22050.
+ *  with a sample rate of 24000 (300..1200 bit/s), 48000 (2400 bit/s),
+ *  16000 (Sharp) or 22050 (Sharp el-9x00, TI-74), see kcsOpen().
  *
  *  All functions return errors in errno. This is indicated by
  *  a return value of NULL (open) or a nonzero result.
@@ -846,10 +847,19 @@ KCS_FILE *kcsOpen( char *filename,
         return NULL;
     }
 
+    /*
+     *  Sample rate for writing: a multiple of both frequencies, so each
+     *  wave has the same integer number of samples and the bit rate is
+     *  exact, e.g. 1200 and 2400 Hz in 20 and 10 samples at 24000 Hz.
+     *  22050 Hz gave 18 instead of 18.375 samples, 2% too fast.
+     *  The Sharp el-9x00 and the TI-74 keep 22050 Hz.
+     */
     wfile = wopen( filename, openmode, 1, 8,
-                   baudrate ==  500 ? 16000
-                 : baudrate == 2400 ? 44100 
-                                    : 22050 );
+                   baudrate ==  500 ? 16000    /* Sharp: 4000/2000 Hz */
+                 : baudrate == 2400 ? 48000    /* high speed: 4800/2400 Hz */
+                 : baudrate == 1500 ? 22050    /* Sharp el-9x00 */
+                 : baudrate == 1400 ? 22050    /* TI-74 */
+                                    : 24000 ); /* 300..1200: 2400/1200 Hz */
     if ( wfile == NULL ) {
         return NULL;
     }

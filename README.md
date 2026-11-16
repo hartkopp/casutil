@@ -245,6 +245,29 @@ lead-in sequences are shorter than in an original recording, which saves
 time when loading. `wave850` creates slow (`-s`) or fast (`-f`) files; use
 `-2` for the FP-200, which needs longer lead-ins.
 
+All programs write WAV files with 8 bits per sample, mono. The sample rate
+depends on the speed of the format and is chosen, so that both frequencies
+divide it: each wave then has the same integer number of samples, and the
+frequencies and the bit rate are exact.
+
+| Format | Frequencies | Before: rate, samples per wave | Now: rate, samples per wave |
+|--------|-------------|-------------------------------|-----------------------------|
+| 300 and 1200 bit/s (Casio, Canon X-07) | 2400 / 1200 Hz | 22050, 9 / 18 instead of 9.19 / 18.375 | 24000, 10 / 20 |
+| 2400 bit/s (PB-1000, fx-8000G) | 4800 / 2400 Hz | 44100, 9 / 18 instead of 9.19 / 18.375 | 48000, 10 / 20 |
+| Sharp 500 bit/s | 4000 / 2000 Hz | 16000, 4 / 8 | 16000, unchanged |
+| Sharp EL-9x00 1500 bit/s | 2100 / 1050 Hz | 22050 | 22050, unchanged |
+| TI-74 1400 bit/s | half waves of 1400 Hz | 22050 | 22050, unchanged |
+
+The waves have an integer number of samples, so 22050 and 44100 samples
+per second shortened each wave by 2 %: the files were written with about
+306 instead of 300 bit/s. A recording of an FX-602P with the FA-2 shows
+2340 / 1167 Hz and 293 bit/s, the calculator itself is about 2.5 % slower
+than the nominal speed, the interfaces load both. 24000 samples per second
+need about as much space as 22050, 48000 a little more than 44100; both
+are valid sample rates, which sound cards and players handle. The Sharp
+EL-9x00 and the TI-74 formats would not gain much and were not changed, as
+they could not be tested with the devices.
+
 `wave602` creates a WAV file for the FX-601P/FX-602P or FX-501P/FX-502P
 from a binary file with header, programs or registers and footer, e.g. from
 `wav2raw -b`. The format is detected from the header. `-n<name>` sets the
