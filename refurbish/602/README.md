@@ -11,7 +11,7 @@ clean recording created from its contents:
    on read errors, a missing footer or a missing end.
 2. `prg602` creates a new WAV file from the listing, as the calculator would
    save it: a lead-in of 5 seconds, the same header and contents, a complete
-   footer of 8 bytes 0xFF followed by 8 bytes 0x00, 24000 samples per
+   footer of 8 bytes 0xFF followed by 7 bytes 0x00, 24000 samples per
    second.
 3. `list602 -w` reads the new recording again, and its contents must be the
    contents of the original recording. Recordings that were cut off (the

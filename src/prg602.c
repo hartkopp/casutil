@@ -65,7 +65,7 @@
 #define PARTITION601  0x10    /* FX-601P: 128 steps */
 #define REGISTERS601  16      /* FX-501P/FX-601P: M0..M9, MF, 5 L registers */
 #define DISPLAY_LEN   16      /* bytes of alpha display data */
-#define TRAILER_LEN   8       /* bytes 0x00 behind the footer */
+#define TRAILER_LEN   7       /* bytes 0x00 behind the footer */
 #define DISPLAY_CHARS 11      /* characters shown in the display */
 #define DISPLAY_FLAG  5       /* bit 7 is set for the sixth character */
 
@@ -1454,8 +1454,9 @@ int main( int argc, char **argv )
         len += FOOTER_LEN;
 
         /*
-         *  The calculators write 0x00 behind the footer, the recordings show
-         *  7 bytes and the start of an 8th byte
+         *  The calculators write 7 bytes 0x00 behind the footer and stop
+         *  in the start bit of an 8th byte, the lead-out of kcsClose()
+         *  looks alike
          */
         memset( out + len, 0x00, TRAILER_LEN );
         len += TRAILER_LEN;
